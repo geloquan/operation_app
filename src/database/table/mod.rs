@@ -4,6 +4,9 @@ use serde::{Serialize, Deserialize};
 pub mod join;
 pub mod query;
 pub mod data;
+pub mod builder;
+pub mod window;
+pub mod tree;
 
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Deserialize, Serialize)]

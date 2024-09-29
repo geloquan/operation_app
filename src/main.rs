@@ -1,13 +1,14 @@
 mod database;
 use database::table::{
-    data::TableData,
-    query
+    builder::BuildTable, data::TableData, join::structure::OperationSelect, query
 };
 
 
 pub mod application;
 use application::RunningApp;
 
+pub mod ws;
+use ws::receive::*;
 
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike, Utc};
 use eframe::{egui, App, Frame};
@@ -41,28 +42,19 @@ enum DatabaseTable {
     OperationStaff,
     OperationTool
 }
-#[derive(Deserialize, Debug, Serialize)]
-#[serde(rename_all = "lowercase")]
-enum Operation {
-    Initialize,
-    Update
-}
-#[derive(Deserialize, Debug, Serialize)]
-struct ReceiveMessage {
-    table_name: DatabaseTable,
-    operation: Operation,
-    status_code: String,
-    data: String,
-}
-
+#[derive(Deserialize, Debug, Serialize, Default)]
+struct PreRunning {
+    search_operation: String,
+    search_operation_result: Vec<OperationSelect>,
+} 
 
 struct OperationApp {
+    data: Option<TableData>,
     rx: tokio::sync::mpsc::Receiver<String>,
     tx: tokio::sync::mpsc::Sender<String>,
     sender: WsSender,
     receiver: WsReceiver,
-    search_operation: String,
-    search_operation_result: Vec<String>,
+    search: PreRunning,
     //central_window: OperationWindow,
     state: Option<RunningApp>
 }
@@ -82,16 +74,18 @@ impl OperationApp {
         sender.send(ewebsock::WsMessage::Text(request_json));
 
         OperationApp {
+            data: None,
             rx,
             tx,
             sender,
             receiver,
-            search_operation: "".to_string(),
-            search_operation_result: vec![],
+            search: PreRunning::default(),
             state: None
         }
     }
-    
+    pub fn search(&self) {
+
+    }
 }
 
 impl App for OperationApp {
@@ -102,19 +96,29 @@ impl App for OperationApp {
                     
                 },
                 ewebsock::WsEvent::Message(text) => {
-                    println!("msg receieved: {:?}", text);
                     match text {
                         ewebsock::WsMessage::Binary(vec) => todo!(),
                         ewebsock::WsMessage::Text(text) => {
+                            println!("text: {:?}", text);
                             match serde_json::from_str::<ReceiveMessage>(&text) {
                                 Ok(message) => {
+                                    println!("message: {:?}", message);
                                     match message.operation {
-                                        Operation::Initialize => {},
+                                        Operation::Initialize => {
+                                            if let Some(data) = &mut self.data {
+                                                data.initialize(message.data);
+                                            } else {
+                                                let mut new_table_data = TableData::new();
+                                                new_table_data.initialize(message.data);
+                                                self.data = Some(new_table_data);
+                                                println!("self.data: {:?}", self.data);
+                                            }
+                                        },
                                         Operation::Update => {},
                                     }
                                 },
                                 Err(_) => {
-                                    
+                                    println!("err parsing: ReceiveMessage");
                                 },
                             }
                         },
@@ -144,31 +148,36 @@ impl App for OperationApp {
         }
 
         egui::SidePanel::left("left").show(ctx, |ui| {
-            if let Some(state) = &self.state {
-                if let Some(operation) = state.get_operation() {
-                    
-                }
-            } else {
-                ui.label("ENTER OPERATION");
-                if ui.text_edit_singleline(&mut self.search_operation).changed() {
-                    println!("trying to search: {:?}", self.search_operation);
-                }
+            if let Some(operation) = self.get_operation() {
+                ui.heading("OPERATION: "); 
+                ui.label(operation.operation_label);
+                ui.heading("STATUS: "); 
+                ui.label(operation.operation_status);
+                ui.heading("ETA: "); 
+                ui.heading("ROOM: ");
+                ui.label(operation.room);
+                ui.heading("ROOM ALIAS: ");
+                ui.label(operation.room_code);
+            }
+            ui.label("ENTER OPERATION");
+            if ui.text_edit_singleline(&mut self.search.search_operation).changed() {
+                println!("trying to search: {:?}", self.search.search_operation);
+                &self.filter_operation();
+                //if let Some(operation_result) =  {
+                //    &self.search.search_operation_result = operation_result.clone();
+                //}
+            }
 
-                ui.separator();
-                if self.search_operation_result.is_empty() {
-                    ui.label("No results found");
-                } else {
-                    ui.label("Results:");
-                    for row in &self.search_operation_result {
-                        ui.label(row);  
-                    }
+            ui.separator();
+
+            if self.search.search_operation_result.is_empty() {
+                ui.label("No results found");
+            } else {
+                ui.label("Results:");
+                if let Some(data) = &mut self.data { 
+                    TableData::build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())), data);
                 }
             }
-            ui.label("OPERATION: "); //op.label
-            ui.label("STATUS: "); //op.status
-            ui.label("ETA: "); //op.start -> op.end
-            ui.label("ROOM: ");
-            ui.label("ROOM ALIAS: ");
 
             if ui.button("send alert").clicked() {
                 let request_json = serde_json::to_string(&SendMessage {

@@ -88,6 +88,7 @@ impl TableData {
     }
     pub fn initialize(&mut self, raw_string: String) {
         let raw_table: RawTable = serde_json::from_str(&raw_string).expect("parse error");
+        println!("raw table: {:?}", raw_table);
         self.equipment = Arc::new(RwLock::new(raw_table.equipment.clone()));
         self.room = Arc::new(RwLock::new(raw_table.room.clone()));
         self.tool = Arc::new(RwLock::new(raw_table.tool.clone()));
@@ -101,6 +102,10 @@ impl TableData {
         self.patient_ward_assistant = Arc::new(RwLock::new(raw_table.patient_ward_assistant.clone()));
         self.operation_staff = Arc::new(RwLock::new(raw_table.operation_staff.clone()));
         self.operation_tool = Arc::new(RwLock::new(raw_table.operation_tool.clone()));
+        self.alert = Arc::new(RwLock::new(raw_table.alert.clone()));
+        self.frontdesk = Arc::new(RwLock::new(raw_table.frontdesk.clone()));
+        self.alert_frontdesk = Arc::new(RwLock::new(raw_table.alert_frontdesk.clone()));
+        self.alert_staff = Arc::new(RwLock::new(raw_table.alert_staff.clone()));
     }
     //pub fn update(&self, raw_string: String, database_table: DatabaseTable) {
     //    match serde_json::from_str::<UpdateEquipmentRow>(&raw_string) {

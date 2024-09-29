@@ -1,5 +1,6 @@
-use super::database::table::data::TableData;
+use crate::database::table::tree::TableTree;
+
 pub struct RunningApp {
     pub operation_id: i32,
-    pub data: Option<TableData>,
+    pub tree: Option<TableTree>,
 }
