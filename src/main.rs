@@ -1,3 +1,13 @@
+mod database;
+use database::table::{
+    data::TableData,
+    query
+};
+
+
+pub mod application;
+use application::RunningApp;
+
 
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike, Utc};
 use eframe::{egui, App, Frame};
@@ -45,12 +55,16 @@ struct ReceiveMessage {
     data: String,
 }
 
+
 struct OperationApp {
     rx: tokio::sync::mpsc::Receiver<String>,
     tx: tokio::sync::mpsc::Sender<String>,
     sender: WsSender,
     receiver: WsReceiver,
+    search_operation: String,
+    search_operation_result: Vec<String>,
     //central_window: OperationWindow,
+    state: Option<RunningApp>
 }
 
 impl OperationApp {
@@ -72,8 +86,12 @@ impl OperationApp {
             tx,
             sender,
             receiver,
+            search_operation: "".to_string(),
+            search_operation_result: vec![],
+            state: None
         }
     }
+    
 }
 
 impl App for OperationApp {
@@ -126,11 +144,32 @@ impl App for OperationApp {
         }
 
         egui::SidePanel::left("left").show(ctx, |ui| {
+            if let Some(state) = &self.state {
+                if let Some(operation) = state.get_operation() {
+                    
+                }
+            } else {
+                ui.label("ENTER OPERATION");
+                if ui.text_edit_singleline(&mut self.search_operation).changed() {
+                    println!("trying to search: {:?}", self.search_operation);
+                }
+
+                ui.separator();
+                if self.search_operation_result.is_empty() {
+                    ui.label("No results found");
+                } else {
+                    ui.label("Results:");
+                    for row in &self.search_operation_result {
+                        ui.label(row);  
+                    }
+                }
+            }
             ui.label("OPERATION: "); //op.label
             ui.label("STATUS: "); //op.status
             ui.label("ETA: "); //op.start -> op.end
             ui.label("ROOM: ");
             ui.label("ROOM ALIAS: ");
+
             if ui.button("send alert").clicked() {
                 let request_json = serde_json::to_string(&SendMessage {
                     level: "operation".to_string(),
