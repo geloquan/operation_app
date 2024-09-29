@@ -1,18 +1,21 @@
 mod database;
 use database::table::{
-    builder::BuildTable, data::TableData, join::structure::OperationSelect, query
+    builder::BuildTable, data::TableData, join::structure::OperationSelect, query, Staff
 };
 
 
 pub mod application;
+use application::authenticate::StaffCredential;
 use application::RunningApp;
 
 pub mod ws;
 use ws::receive::*;
 
-use chrono::{DateTime, Datelike, NaiveDateTime, Timelike, Utc};
+pub mod temporary;
+use temporary::*;
+
+use chrono::{Local};
 use eframe::{egui, App, Frame};
-use egui::{mutex::Mutex, Color32, Label, RichText, Sense};
 use egui_extras::{TableBuilder, Column};
 use ewebsock::{self, WsReceiver, WsSender};
 use serde::{Deserialize, Serialize};
@@ -55,8 +58,10 @@ struct OperationApp {
     sender: WsSender,
     receiver: WsReceiver,
     search: PreRunning,
+    staff: Option<StaffCredential>,
     //central_window: OperationWindow,
-    state: Option<RunningApp>
+    state: Option<RunningApp>,
+    temp: Option<Temporary>
 }
 
 impl OperationApp {
@@ -80,11 +85,10 @@ impl OperationApp {
             sender,
             receiver,
             search: PreRunning::default(),
-            state: None
+            staff: None,
+            state: None,
+            temp: None
         }
-    }
-    pub fn search(&self) {
-
     }
 }
 
@@ -148,45 +152,64 @@ impl App for OperationApp {
         }
 
         egui::SidePanel::left("left").show(ctx, |ui| {
-            if let Some(operation) = self.get_operation() {
-                ui.heading("OPERATION: "); 
-                ui.label(operation.operation_label);
-                ui.heading("STATUS: "); 
-                ui.label(operation.operation_status);
-                ui.heading("ETA: "); 
-                ui.heading("ROOM: ");
-                ui.label(operation.room);
-                ui.heading("ROOM ALIAS: ");
-                ui.label(operation.room_code);
-            }
-            ui.label("ENTER OPERATION");
-            if ui.text_edit_singleline(&mut self.search.search_operation).changed() {
-                println!("trying to search: {:?}", self.search.search_operation);
-                &self.filter_operation();
-                //if let Some(operation_result) =  {
-                //    &self.search.search_operation_result = operation_result.clone();
-                //}
-            }
-
-            ui.separator();
-
-            if self.search.search_operation_result.is_empty() {
-                ui.label("No results found");
-            } else {
-                ui.label("Results:");
-                if let Some(data) = &mut self.data { 
-                    TableData::build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())), data);
+            let margin = 20.0;
+            ui.add_space(margin);
+            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                if let Some(operation) = self.get_operation() {
+                    ui.heading("OPERATION: "); 
+                    ui.label(operation.operation_label);
+                    ui.heading("STATUS: "); 
+                    ui.label(operation.operation_status);
+                    ui.heading("ROOM: ");
+                    ui.label(operation.room);
+                    ui.heading("ROOM ALIAS: ");
+                    ui.label(operation.room_code);
                 }
-            }
+                ui.label("🔎 SEARCH OPERATION");
+                if ui.text_edit_singleline(&mut self.search.search_operation).changed() {
+                    &self.filter_operation();
+                }
 
-            if ui.button("send alert").clicked() {
-                let request_json = serde_json::to_string(&SendMessage {
-                    level: "operation".to_string(),
-                    method: "alert".to_string(),
-                    data: Some(json!({"content": "Hello from button('Send Message')!"})),
-                }).unwrap();
-                self.sender.send(ewebsock::WsMessage::Text(request_json));
-            }
+                ui.separator();
+
+                if self.search.search_operation_result.is_empty() && self.search.search_operation != "" {
+                    ui.label("💤 No results found");
+                } else {
+                    if let Some(data) = &mut self.data { 
+                        if !self.search.search_operation_result.is_empty() {
+                            TableData::build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())), data);
+                        }
+                    }
+                }
+
+                if ui.button("send alert").clicked() {
+                    let request_json = serde_json::to_string(&SendMessage {
+                        level: "operation".to_string(),
+                        method: "alert".to_string(),
+                        data: Some(json!({"content": "Hello from button('Send Message')!"})),
+                    }).unwrap();
+                    self.sender.send(ewebsock::WsMessage::Text(request_json));
+                }
+            });
+        
+            // Bottom section
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                ui.add_space(margin);
+                ui.heading("system by geloquan ");
+                ui.separator();
+                
+                let current_time = Local::now(); 
+                let formatted_time = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
+
+                ui.label(format!("Current Time: {}", formatted_time));
+                if let Some(staff_credential) = &self.staff {
+                    
+                } else {
+                    if ui.button("login as").clicked() {
+                        println!("LOGIN");
+                    }
+                }
+            });
         });
         egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
             ui.label("Hello World!");

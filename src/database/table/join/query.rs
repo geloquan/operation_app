@@ -55,8 +55,9 @@ impl OperationApp {
 
     pub fn filter_operation(&mut self) {
         println!("filter_operation()");
-        if let Some(ref data) = self.data {
-            println!("Some(ref data)");
+        if &self.search.search_operation == "" {
+            self.search.search_operation_result.clear();
+        } else if let Some(ref data) = self.data {
             let operation = data.operation.read().unwrap();
             let patient = data.patient.read().unwrap();
             let room = data.room.read().unwrap();

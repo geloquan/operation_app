@@ -1,3 +1,5 @@
+pub mod authenticate;
+
 use crate::database::table::tree::TableTree;
 
 pub struct RunningApp {

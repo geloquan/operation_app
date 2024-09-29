@@ -16,10 +16,12 @@ impl BuildTable for TableData {
             .column(Column::auto().resizable(false))
             .column(Column::auto().resizable(false))
             .column(Column::auto().resizable(false))
+            .striped(true)
             .header(20.0, |mut header| {
                 let headings = [
                     "OPERATION",
                     "STATUS",
+                    "PATIENT NAME",
                     "ROOM",
                     "ROOM CODE"
                 ];                
@@ -34,11 +36,14 @@ impl BuildTable for TableData {
             .body(|mut body| {
                 for content in s {
                     body.row(30.0, |mut row| {
-                        row.col(|ui| {
+                        row.col(|ui: &mut Ui| {
                             ui.add(Label::new(content.operation_label.clone()));
                         });
                         row.col(|ui| {
                             ui.add(Label::new(content.operation_status.clone()));
+                        });
+                        row.col(|ui| {
+                            ui.add(Label::new(content.patient_full_name.clone()));
                         });
                         row.col(|ui| {
                             ui.add(Label::new(content.room.clone()));
