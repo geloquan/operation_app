@@ -1,18 +1,23 @@
 mod database;
 use database::table::{
-    builder::BuildTable, data::TableData, join::structure::OperationSelect, query, Staff
+    builder::BuildTable, data::TableData, join::structure::OperationSelect, query, private::StaffAuthGrant
 };
 
 
 pub mod application;
-use application::authenticate::StaffCredential;
+use application::{authenticate::StaffCredential, field};
 use application::RunningApp;
 
 pub mod ws;
-use ws::receive::*;
+use ws::receive::{
+    Handle
+};
 
 pub mod temporary;
 use temporary::*;
+
+pub mod cipher;
+use cipher::{decrypt_message, generate_fixed_key, EncryptedText};
 
 use chrono::{Local};
 use eframe::{egui, App, Frame};
@@ -61,7 +66,8 @@ struct OperationApp {
     staff: Option<StaffCredential>,
     //central_window: OperationWindow,
     state: Option<RunningApp>,
-    temp: Option<Temporary>
+    temp: Option<Temporary>,
+    credential_panel: field::Login
 }
 
 impl OperationApp {
@@ -87,111 +93,63 @@ impl OperationApp {
             search: PreRunning::default(),
             staff: None,
             state: None,
-            temp: None
+            temp: None,
+            credential_panel: field::Login {
+                email: "".to_string(),
+                password: "".to_string(),
+                session_token: "".to_string()
+            }
         }
     }
 }
 
 impl App for OperationApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if let Some(msg) = self.receiver.try_recv() {
-            match msg {
-                ewebsock::WsEvent::Opened => {
-                    
-                },
-                ewebsock::WsEvent::Message(text) => {
-                    match text {
-                        ewebsock::WsMessage::Binary(vec) => todo!(),
-                        ewebsock::WsMessage::Text(text) => {
-                            println!("text: {:?}", text);
-                            match serde_json::from_str::<ReceiveMessage>(&text) {
-                                Ok(message) => {
-                                    println!("message: {:?}", message);
-                                    match message.operation {
-                                        Operation::Initialize => {
-                                            if let Some(data) = &mut self.data {
-                                                data.initialize(message.data);
-                                            } else {
-                                                let mut new_table_data = TableData::new();
-                                                new_table_data.initialize(message.data);
-                                                self.data = Some(new_table_data);
-                                                println!("self.data: {:?}", self.data);
-                                            }
-                                        },
-                                        Operation::Update => {},
-                                    }
-                                },
-                                Err(_) => {
-                                    println!("err parsing: ReceiveMessage");
-                                },
-                            }
-                        },
-                        ewebsock::WsMessage::Unknown(_) => todo!(),
-                        ewebsock::WsMessage::Ping(vec) => todo!(),
-                        ewebsock::WsMessage::Pong(vec) => todo!(),
-                    }
-                },
-                ewebsock::WsEvent::Error(_) => {
-                    let options = ewebsock::Options::default();
-                    let (mut sender, receiver) = ewebsock::connect("ws://127.0.0.15:8080", options).unwrap();
-                    
-                    let request_json = serde_json::to_string(&SendMessage {
-                        level: "operation".to_string(),
-                        method: "initial".to_string(),
-                        data: Some(json!({"content": "Hello from button('Send Message')!"})),
-                    }).unwrap();
-                    sender.send(ewebsock::WsMessage::Text(request_json));
-
-                    self.sender = sender;
-                    self.receiver = receiver;
-                },
-                ewebsock::WsEvent::Closed => {
-
-                },
-            }
-        }
+        self.handle_incoming();
 
         egui::SidePanel::left("left").show(ctx, |ui| {
             let margin = 20.0;
-            ui.add_space(margin);
-            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                if let Some(operation) = self.get_operation() {
-                    ui.heading("OPERATION: "); 
-                    ui.label(operation.operation_label);
-                    ui.heading("STATUS: "); 
-                    ui.label(operation.operation_status);
-                    ui.heading("ROOM: ");
-                    ui.label(operation.room);
-                    ui.heading("ROOM ALIAS: ");
-                    ui.label(operation.room_code);
-                }
-                ui.label("🔎 SEARCH OPERATION");
-                if ui.text_edit_singleline(&mut self.search.search_operation).changed() {
-                    &self.filter_operation();
-                }
-
-                ui.separator();
-
-                if self.search.search_operation_result.is_empty() && self.search.search_operation != "" {
-                    ui.label("💤 No results found");
-                } else {
-                    if let Some(data) = &mut self.data { 
-                        if !self.search.search_operation_result.is_empty() {
-                            TableData::build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())), data);
+            ui.set_min_width(250.0);
+            if self.staff.is_some() {
+                ui.add_space(margin);
+                ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                    if let Some(operation) = self.get_operation() {
+                        ui.heading("OPERATION: "); 
+                        ui.label(operation.operation_label);
+                        ui.heading("STATUS: "); 
+                        ui.label(operation.operation_status);
+                        ui.heading("ROOM: ");
+                        ui.label(operation.room);
+                        ui.heading("ROOM ALIAS: ");
+                        ui.label(operation.room_code);
+                    }
+                    ui.label("🔎 SEARCH OPERATION");
+                    if ui.text_edit_singleline(&mut self.search.search_operation).changed() {
+                        &self.filter_operation();
+                    }
+    
+                    ui.separator();
+    
+                    if self.search.search_operation_result.is_empty() && self.search.search_operation != "" {
+                        ui.label("💤 No results found");
+                    } else {
+                        if let Some(data) = &mut self.data { 
+                            if !self.search.search_operation_result.is_empty() {
+                                TableData::build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())), data);
+                            }
                         }
                     }
-                }
-
-                if ui.button("send alert").clicked() {
-                    let request_json = serde_json::to_string(&SendMessage {
-                        level: "operation".to_string(),
-                        method: "alert".to_string(),
-                        data: Some(json!({"content": "Hello from button('Send Message')!"})),
-                    }).unwrap();
-                    self.sender.send(ewebsock::WsMessage::Text(request_json));
-                }
-            });
-        
+    
+                    if ui.button("send alert").clicked() {
+                        let request_json = serde_json::to_string(&SendMessage {
+                            level: "operation".to_string(),
+                            method: "alert".to_string(),
+                            data: Some(json!({"content": "Hello from button('Send Message')!"})),
+                        }).unwrap();
+                        self.sender.send(ewebsock::WsMessage::Text(request_json));
+                    }
+                });
+            }
             // Bottom section
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                 ui.add_space(margin);
@@ -203,11 +161,28 @@ impl App for OperationApp {
 
                 ui.label(format!("Current Time: {}", formatted_time));
                 if let Some(staff_credential) = &self.staff {
+
+                    if ui.button("logout").clicked() {
+                        println!("logout");
+                    }
                     
                 } else {
-                    if ui.button("login as").clicked() {
-                        println!("LOGIN");
+                    if ui.button("login").clicked() {
+                        let request_json = serde_json::to_string(&SendMessage {
+                            level: "Operation".to_string(),
+                            method: "Authenticate".to_string(),
+                            data: Some(serde_json::to_value(&self.credential_panel).unwrap())
+                        }).unwrap();
+                        self.sender.send(ewebsock::WsMessage::Text(request_json.to_string()));
                     }
+                    ui.horizontal(|ui| {
+                        ui.label("password ");
+                        ui.text_edit_singleline(&mut self.credential_panel.password);
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("email ");
+                        ui.text_edit_singleline(&mut self.credential_panel.email);
+                    });
                 }
             });
         });
