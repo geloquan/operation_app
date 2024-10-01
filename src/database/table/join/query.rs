@@ -58,6 +58,7 @@ impl OperationApp {
         if &self.search.search_operation == "" {
             self.search.search_operation_result.clear();
         } else if let Some(ref data) = self.data {
+            println!("data {:?}", data);
             let operation = data.operation.read().unwrap();
             let patient = data.patient.read().unwrap();
             let room = data.room.read().unwrap();

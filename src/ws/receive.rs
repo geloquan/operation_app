@@ -2,7 +2,8 @@
 use ewebsock::WsReceiver;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use crate::{application::authenticate::StaffCredential, cipher::{decrypt_message, generate_fixed_key, EncryptedText}, database::{self, table::{self, data::TableData}}, OperationApp, SendMessage};
+use tokio_tungstenite::tungstenite::http::status;
+use crate::{application::authenticate::StaffCredential, cipher::{decrypt_message, generate_fixed_key, EncryptedText}, component::design, database::{self, table::{self, data::TableData}}, OperationApp, SendMessage};
 
 #[derive(Deserialize, Debug, Serialize, Clone, Copy)]
 pub enum TableTarget {
@@ -57,8 +58,10 @@ impl Handle for OperationApp {
                                                     match message.operation {
                                                         Operation::Initialize => {
                                                             if let Some(data) = &mut self.data {
+                                                                println!("some data");
                                                                 data.initialize(message.data);
                                                             } else {
+                                                                println!("none data");
                                                                 let mut new_table_data = TableData::new();
                                                                 new_table_data.initialize(message.data);
                                                                 self.data = Some(new_table_data);
@@ -66,22 +69,14 @@ impl Handle for OperationApp {
                                                         },
                                                         Operation::Update => {},
                                                         Operation::AuthHandshake => {
-                                                            if self.staff.is_none() {
-                                                                println!("statuscode {:?}", message.status_code);
-                                                                //match serde_json::from_str::<table::private::StaffAuthGrant>(&message.data) {
-                                                                //    Ok(staff) => {
-                                                                //        self.staff = Some(StaffCredential {
-                                                                //            id: staff.id.unwrap_or_default(),
-                                                                //            email: staff.email.unwrap_or_default(),
-                                                                //            full_name: staff.full_name.unwrap_or_default(),
-                                                                //            session_key: staff.session_token.unwrap_or_default(),
-                                                                //        })
-                                                                //    },
-                                                                //    Err(_) => {
-                                                                //        
-                                                                //    },
-                                                                //} 
+                                                            println!("statuscode {:?}", message.status_code);
+                                                            if let Ok(staff_credential) = serde_json::from_str::<StaffCredential>(&message.data) {
+                                                                self.staff = Some(staff_credential);
+                                                            } else {
+                                                                self.staff = None;
                                                             }
+                                                            if message.status_code == "success" { self.credential_panel.state = design::State::Valid }
+                                                            else if message.status_code == "failed" { self.credential_panel.state = design::State::Error }
                                                         }
                                                     }
                                                 },

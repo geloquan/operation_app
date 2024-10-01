@@ -3,12 +3,12 @@ use database::table::{
     builder::BuildTable, data::TableData, join::structure::OperationSelect, query, private::StaffAuthGrant
 };
 
-
 pub mod application;
 use application::{authenticate::StaffCredential, field};
-use application::RunningApp;
+use application::{states, RunningApp};
 
 pub mod ws;
+use egui::{Frame, epaint, Color32};
 use ws::receive::{
     Handle
 };
@@ -19,8 +19,11 @@ use temporary::*;
 pub mod cipher;
 use cipher::{decrypt_message, generate_fixed_key, EncryptedText};
 
+pub mod component;
+use component::design;
+
 use chrono::{Local};
-use eframe::{egui, App, Frame};
+use eframe::{egui, App};
 use egui_extras::{TableBuilder, Column};
 use ewebsock::{self, WsReceiver, WsSender};
 use serde::{Deserialize, Serialize};
@@ -67,7 +70,7 @@ struct OperationApp {
     //central_window: OperationWindow,
     state: Option<RunningApp>,
     temp: Option<Temporary>,
-    credential_panel: field::Login
+    credential_panel: states::Login
 }
 
 impl OperationApp {
@@ -78,8 +81,8 @@ impl OperationApp {
         let (mut sender, receiver) = ewebsock::connect("ws://127.0.0.15:8080", options).unwrap();
 
         let request_json = serde_json::to_string(&SendMessage {
-            level: "operation".to_string(),
-            method: "initial".to_string(),
+            level: "Operation".to_string(),
+            method: "Initial".to_string(),
             data: Some(json!({"content": "Hello from button('Send Message')!"})),
         }).unwrap();
         sender.send(ewebsock::WsMessage::Text(request_json));
@@ -94,10 +97,13 @@ impl OperationApp {
             staff: None,
             state: None,
             temp: None,
-            credential_panel: field::Login {
-                email: "".to_string(),
-                password: "".to_string(),
-                session_token: "".to_string()
+            credential_panel: states::Login {
+                field: field::Login {
+                    email: "".to_string(),
+                    password: "".to_string(),
+                    session_token: "".to_string()
+                },
+                state: design::State::Default,
             }
         }
     }
@@ -161,27 +167,37 @@ impl App for OperationApp {
 
                 ui.label(format!("Current Time: {}", formatted_time));
                 if let Some(staff_credential) = &self.staff {
-
                     if ui.button("logout").clicked() {
-                        println!("logout");
                     }
-                    
+                    ui.horizontal(|ui| {
+                        ui.label("name");
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("email");
+                    });
                 } else {
                     if ui.button("login").clicked() {
+                        self.credential_panel.state = design::State::Waiting;
                         let request_json = serde_json::to_string(&SendMessage {
                             level: "Operation".to_string(),
                             method: "Authenticate".to_string(),
-                            data: Some(serde_json::to_value(&self.credential_panel).unwrap())
+                            data: Some(serde_json::to_value(&self.credential_panel.field).unwrap())
                         }).unwrap();
                         self.sender.send(ewebsock::WsMessage::Text(request_json.to_string()));
                     }
+                    let color: Color32 = match &self.credential_panel.state {
+                        design::State::Waiting => {Color32::from_hex("#FFA652").unwrap()},
+                        design::State::Error => {Color32::RED},
+                        design::State::Valid => {Color32::GREEN},
+                        design::State::Default => {Color32::TRANSPARENT},
+                    };
                     ui.horizontal(|ui| {
                         ui.label("password ");
-                        ui.text_edit_singleline(&mut self.credential_panel.password);
+                        design::input(ui, &mut self.credential_panel.field.password, color, design::Category::Frame);
                     });
                     ui.horizontal(|ui| {
                         ui.label("email ");
-                        ui.text_edit_singleline(&mut self.credential_panel.email);
+                        design::input(ui, &mut self.credential_panel.field.email, color, design::Category::Frame);
                     });
                 }
             });
