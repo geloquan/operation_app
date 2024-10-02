@@ -75,8 +75,12 @@ impl Handle for OperationApp {
                                                             } else {
                                                                 self.staff = None;
                                                             }
-                                                            if message.status_code == "success" { self.credential_panel.state = design::State::Valid }
-                                                            else if message.status_code == "failed" { self.credential_panel.state = design::State::Error }
+                                                            if message.status_code == "success" { 
+                                                                self.credential_panel.state = design::State::Valid
+                                                            }
+                                                            else if message.status_code == "failed" { 
+                                                                self.credential_panel.state = design::State::Error 
+                                                            }
                                                         }
                                                     }
                                                 },

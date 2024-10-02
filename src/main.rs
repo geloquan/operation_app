@@ -8,7 +8,7 @@ use application::{authenticate::StaffCredential, field};
 use application::{states, RunningApp};
 
 pub mod ws;
-use egui::{Frame, epaint, Color32};
+use egui::{epaint, Align2, Color32, Frame, Window};
 use ws::receive::{
     Handle
 };
@@ -27,7 +27,7 @@ use eframe::{egui, App};
 use egui_extras::{TableBuilder, Column};
 use ewebsock::{self, WsReceiver, WsSender};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, to_string};
 
 #[derive(Deserialize, Debug, Serialize)]
 struct SendMessage {
@@ -78,14 +78,7 @@ impl OperationApp {
         let (tx, rx) = tokio::sync::mpsc::channel(32);
         
         let options = ewebsock::Options::default();
-        let (mut sender, receiver) = ewebsock::connect("ws://127.0.0.15:8080", options).unwrap();
-
-        let request_json = serde_json::to_string(&SendMessage {
-            level: "Operation".to_string(),
-            method: "Initial".to_string(),
-            data: Some(json!({"content": "Hello from button('Send Message')!"})),
-        }).unwrap();
-        sender.send(ewebsock::WsMessage::Text(request_json));
+        let (sender, receiver) = ewebsock::connect("ws://127.0.0.15:8080", options).unwrap();
 
         OperationApp {
             data: None,
@@ -113,69 +106,31 @@ impl App for OperationApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_incoming();
 
-        egui::SidePanel::left("left").show(ctx, |ui| {
-            let margin = 20.0;
-            ui.set_min_width(250.0);
-            if self.staff.is_some() {
-                ui.add_space(margin);
-                ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                    if let Some(operation) = self.get_operation() {
-                        ui.heading("OPERATION: "); 
-                        ui.label(operation.operation_label);
-                        ui.heading("STATUS: "); 
-                        ui.label(operation.operation_status);
-                        ui.heading("ROOM: ");
-                        ui.label(operation.room);
-                        ui.heading("ROOM ALIAS: ");
-                        ui.label(operation.room_code);
-                    }
-                    ui.label("🔎 SEARCH OPERATION");
-                    if ui.text_edit_singleline(&mut self.search.search_operation).changed() {
-                        &self.filter_operation();
-                    }
-    
-                    ui.separator();
-    
-                    if self.search.search_operation_result.is_empty() && self.search.search_operation != "" {
-                        ui.label("💤 No results found");
-                    } else {
-                        if let Some(data) = &mut self.data { 
-                            if !self.search.search_operation_result.is_empty() {
-                                TableData::build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())), data);
-                            }
-                        }
-                    }
-    
-                    if ui.button("send alert").clicked() {
-                        let request_json = serde_json::to_string(&SendMessage {
-                            level: "operation".to_string(),
-                            method: "alert".to_string(),
-                            data: Some(json!({"content": "Hello from button('Send Message')!"})),
-                        }).unwrap();
-                        self.sender.send(ewebsock::WsMessage::Text(request_json));
-                    }
-                });
-            }
-            // Bottom section
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                ui.add_space(margin);
-                ui.heading("system by geloquan ");
-                ui.separator();
-                
-                let current_time = Local::now(); 
-                let formatted_time = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
+        if self.staff.is_none() {
+            let width = 500.0;
+            let height = 250.0;
 
-                ui.label(format!("Current Time: {}", formatted_time));
-                if let Some(staff_credential) = &self.staff {
-                    if ui.button("logout").clicked() {
-                    }
+            Window::new("STAFF LOGIN")
+                .default_open(true)
+                .resizable(true)
+                .collapsible(false)
+                .fixed_size([width, height])
+                .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
+                .show(ctx, |ui| {
+                    let color: Color32 = match &self.credential_panel.state {
+                        design::State::Waiting => {Color32::from_hex("#FFA652").unwrap()},
+                        design::State::Error => {Color32::RED},
+                        design::State::Valid => {Color32::GREEN},
+                        design::State::Default => {Color32::TRANSPARENT},
+                    };
                     ui.horizontal(|ui| {
-                        ui.label("name");
+                        ui.label("email ");
+                        design::input(ui, &mut self.credential_panel.field.email, color, design::Category::Frame);
                     });
                     ui.horizontal(|ui| {
-                        ui.label("email");
+                        ui.label("password ");
+                        design::input(ui, &mut self.credential_panel.field.password, color, design::Category::Frame);
                     });
-                } else {
                     if ui.button("login").clicked() {
                         self.credential_panel.state = design::State::Waiting;
                         let request_json = serde_json::to_string(&SendMessage {
@@ -184,24 +139,83 @@ impl App for OperationApp {
                             data: Some(serde_json::to_value(&self.credential_panel.field).unwrap())
                         }).unwrap();
                         self.sender.send(ewebsock::WsMessage::Text(request_json.to_string()));
+                        
+                        self.credential_panel.field.password = "".to_string();
+                        self.credential_panel.field.email = "".to_string();
+                        
                     }
-                    let color: Color32 = match &self.credential_panel.state {
-                        design::State::Waiting => {Color32::from_hex("#FFA652").unwrap()},
-                        design::State::Error => {Color32::RED},
-                        design::State::Valid => {Color32::GREEN},
-                        design::State::Default => {Color32::TRANSPARENT},
-                    };
-                    ui.horizontal(|ui| {
-                        ui.label("password ");
-                        design::input(ui, &mut self.credential_panel.field.password, color, design::Category::Frame);
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("email ");
-                        design::input(ui, &mut self.credential_panel.field.email, color, design::Category::Frame);
+                });
+        } else {
+            egui::SidePanel::left("left").show(ctx, |ui| {
+                let margin = 20.0;
+                ui.set_min_width(250.0);
+                if self.staff.is_some() {
+                    ui.add_space(margin);
+                    ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                        if let Some(operation) = self.get_operation() {
+                            ui.heading("OPERATION: "); 
+                            ui.label(operation.operation_label);
+                            ui.heading("STATUS: "); 
+                            ui.label(operation.operation_status);
+                            ui.heading("ROOM: ");
+                            ui.label(operation.room);
+                            ui.heading("ROOM ALIAS: ");
+                            ui.label(operation.room_code);
+                        }
+                        ui.label("🔎 SEARCH OPERATION");
+                        if ui.text_edit_singleline(&mut self.search.search_operation).changed() {
+                            &self.filter_operation();
+                        }
+        
+                        ui.separator();
+        
+                        if self.search.search_operation_result.is_empty() && self.search.search_operation != "" {
+                            ui.label("💤 No results found");
+                        } else {
+                            if let Some(data) = &mut self.data { 
+                                if !self.search.search_operation_result.is_empty() {
+                                    TableData::build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())), data);
+                                }
+                            }
+                        }
+        
+                        if ui.button("send alert").clicked() {
+                            let request_json = serde_json::to_string(&SendMessage {
+                                level: "operation".to_string(),
+                                method: "alert".to_string(),
+                                data: Some(json!({"content": "Hello from button('Send Message')!"})),
+                            }).unwrap();
+                            self.sender.send(ewebsock::WsMessage::Text(request_json));
+                        }
                     });
                 }
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                    ui.add_space(margin);
+                    ui.heading("system by geloquan ");
+                    ui.separator();
+                    
+                    let current_time = Local::now(); 
+                    let formatted_time = current_time.format("%Y-%m-%d %H:%M:%S").to_string();
+                    
+                    ui.label(format!("Current Time: {}", formatted_time));
+                    if let Some(staff_credential) = self.staff.clone() {
+                        if ui.button("logout").clicked() {
+                            self.credential_panel.state = design::State::Default;
+                            self.staff = None;
+                        }
+                        ui.horizontal(|ui| {
+                            ui.label("name");
+                            ui.label(staff_credential.full_name.clone());
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("email");
+                            ui.label(staff_credential.email.clone());
+                        });
+                    } else {}
+                });
             });
-        });
+        }
+
         egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
             ui.label("Hello World!");
         });
