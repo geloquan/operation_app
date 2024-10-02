@@ -1,11 +1,11 @@
 mod database;
 use database::table::{
-    builder::BuildTable, data::TableData, join::structure::OperationSelect, query, private::StaffAuthGrant
+    ui_builder::BuildTable, data::TableData, join::structure::OperationSelect, query, private::StaffAuthGrant
 };
 
 pub mod application;
 use application::{authenticate::StaffCredential, field};
-use application::{states, RunningApp};
+use application::{states, RunningApp, component as app_component};
 
 pub mod ws;
 use egui::{epaint, Align2, Color32, Frame, Window};
@@ -59,7 +59,7 @@ struct PreRunning {
     search_operation_result: Vec<OperationSelect>,
 } 
 
-struct OperationApp {
+pub struct OperationApp {
     data: Option<TableData>,
     rx: tokio::sync::mpsc::Receiver<String>,
     tx: tokio::sync::mpsc::Sender<String>,
@@ -70,7 +70,9 @@ struct OperationApp {
     //central_window: OperationWindow,
     state: Option<RunningApp>,
     temp: Option<Temporary>,
-    credential_panel: states::Login
+    credential_panel: states::Login,
+    category: states::Category,
+    operation_id: Option<i32>
 }
 
 impl OperationApp {
@@ -97,7 +99,9 @@ impl OperationApp {
                     session_token: "".to_string()
                 },
                 state: design::State::Default,
-            }
+            },
+            category: states::Category::default(),
+            operation_id: None,
         }
     }
 }
@@ -106,53 +110,21 @@ impl App for OperationApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_incoming();
 
-        if self.staff.is_none() {
-            let width = 500.0;
-            let height = 250.0;
+        if let Some(id) = self.operation_id {
+            self.select_operation(&id);
+        }
 
-            Window::new("STAFF LOGIN")
-                .default_open(true)
-                .resizable(true)
-                .collapsible(false)
-                .fixed_size([width, height])
-                .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
-                .show(ctx, |ui| {
-                    let color: Color32 = match &self.credential_panel.state {
-                        design::State::Waiting => {Color32::from_hex("#FFA652").unwrap()},
-                        design::State::Error => {Color32::RED},
-                        design::State::Valid => {Color32::GREEN},
-                        design::State::Default => {Color32::TRANSPARENT},
-                    };
-                    ui.horizontal(|ui| {
-                        ui.label("email ");
-                        design::input(ui, &mut self.credential_panel.field.email, color, design::Category::Frame);
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("password ");
-                        design::input(ui, &mut self.credential_panel.field.password, color, design::Category::Frame);
-                    });
-                    if ui.button("login").clicked() {
-                        self.credential_panel.state = design::State::Waiting;
-                        let request_json = serde_json::to_string(&SendMessage {
-                            level: "Operation".to_string(),
-                            method: "Authenticate".to_string(),
-                            data: Some(serde_json::to_value(&self.credential_panel.field).unwrap())
-                        }).unwrap();
-                        self.sender.send(ewebsock::WsMessage::Text(request_json.to_string()));
-                        
-                        self.credential_panel.field.password = "".to_string();
-                        self.credential_panel.field.email = "".to_string();
-                        
-                    }
-                });
+        if self.staff.is_none() {
+            app_component::login(&ctx, &mut self.credential_panel, &mut self.sender);
         } else {
             egui::SidePanel::left("left").show(ctx, |ui| {
                 let margin = 20.0;
                 ui.set_min_width(250.0);
+
                 if self.staff.is_some() {
                     ui.add_space(margin);
                     ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                        if let Some(operation) = self.get_operation() {
+                        if let Some(operation) = self.get_selected_operation() {
                             ui.heading("OPERATION: "); 
                             ui.label(operation.operation_label);
                             ui.heading("STATUS: "); 
@@ -161,37 +133,30 @@ impl App for OperationApp {
                             ui.label(operation.room);
                             ui.heading("ROOM ALIAS: ");
                             ui.label(operation.room_code);
-                        }
-                        ui.label("🔎 SEARCH OPERATION");
-                        if ui.text_edit_singleline(&mut self.search.search_operation).changed() {
-                            &self.filter_operation();
-                        }
-        
-                        ui.separator();
-        
-                        if self.search.search_operation_result.is_empty() && self.search.search_operation != "" {
-                            ui.label("💤 No results found");
                         } else {
-                            if let Some(data) = &mut self.data { 
-                                if !self.search.search_operation_result.is_empty() {
-                                    TableData::build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())), data);
+                            ui.label("🔎 SEARCH OPERATION");
+                            if ui.text_edit_singleline(&mut self.search.search_operation).changed() {
+                                &self.filter_operation();
+                            }
+            
+                            ui.separator();
+            
+                            if self.search.search_operation_result.is_empty() && self.search.search_operation != "" {
+                                ui.label("💤 No results found");
+                            } else {
+                                if let Some(data) = &mut self.data { 
+                                    if !self.search.search_operation_result.is_empty() {
+                                        TableData::build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())), data, &mut self.operation_id);
+                                    }
                                 }
                             }
-                        }
-        
-                        if ui.button("send alert").clicked() {
-                            let request_json = serde_json::to_string(&SendMessage {
-                                level: "operation".to_string(),
-                                method: "alert".to_string(),
-                                data: Some(json!({"content": "Hello from button('Send Message')!"})),
-                            }).unwrap();
-                            self.sender.send(ewebsock::WsMessage::Text(request_json));
                         }
                     });
                 }
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                     ui.add_space(margin);
                     ui.heading("system by geloquan ");
+
                     ui.separator();
                     
                     let current_time = Local::now(); 
@@ -216,9 +181,6 @@ impl App for OperationApp {
             });
         }
 
-        egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
-            ui.label("Hello World!");
-        });
         egui::CentralPanel::default().show(ctx, |ui| {});
     }
 }

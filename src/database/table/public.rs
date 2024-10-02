@@ -152,7 +152,8 @@ pub struct Operation {
     pub patient_id: Option<i32>,
     pub room_id: Option<i32>,
     pub start_time: Option<String>, // Use chrono::NaiveDateTime for datetime
-    pub end_time: Option<String>,   // Use chrono::NaiveDateTime for datetime
+    pub end_time: Option<String>,
+    pub on_site: Option<i8>
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

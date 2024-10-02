@@ -3,7 +3,8 @@ use ewebsock::WsReceiver;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_tungstenite::tungstenite::http::status;
-use crate::{application::authenticate::StaffCredential, cipher::{decrypt_message, generate_fixed_key, EncryptedText}, component::design, database::{self, table::{self, data::TableData}}, OperationApp, SendMessage};
+use crate::{application::authenticate::StaffCredential, cipher::{decrypt_message, generate_fixed_key, EncryptedText}, component::design, database::{self, table::{self, data::TableData}}, ws::process::Update, OperationApp, SendMessage};
+
 
 #[derive(Deserialize, Debug, Serialize, Clone, Copy)]
 pub enum TableTarget {
@@ -49,6 +50,7 @@ impl Handle for OperationApp {
                     match text {
                         ewebsock::WsMessage::Binary(vec) => todo!(),
                         ewebsock::WsMessage::Text(text) => {
+                            println!("TEXT~!");
                             match serde_json::from_str::<EncryptedText>(&text) {
                                 Ok(encrypted_text) => {
                                     if let Ok(key) = &generate_fixed_key() {
@@ -67,7 +69,10 @@ impl Handle for OperationApp {
                                                                 self.data = Some(new_table_data);
                                                             }
                                                         },
-                                                        Operation::Update => {},
+                                                        Operation::Update => {
+                                                            println!("update: {:?}", message.data);
+                                                            self.update(message.table_name, &message.data);
+                                                        },
                                                         Operation::AuthHandshake => {
                                                             println!("statuscode {:?}", message.status_code);
                                                             if let Ok(staff_credential) = serde_json::from_str::<StaffCredential>(&message.data) {

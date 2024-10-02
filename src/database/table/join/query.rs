@@ -2,7 +2,10 @@ use super::structure::OperationSelect;
 use crate::{application, OperationApp};
 
 impl OperationApp {
-    pub fn get_operation(&mut self) -> Option<OperationSelect> {
+    pub fn select_operation(&mut self, id: &i32) {
+        self.operation_id = Some(*id);
+    }
+    pub fn get_selected_operation(&mut self) -> Option<OperationSelect> {
         if let Some(ref data) = self.data {
             let operation = data.operation.read().unwrap();
             let patient = data.patient.read().unwrap();
@@ -10,8 +13,8 @@ impl OperationApp {
     
             let operation_select: Option<OperationSelect> = operation.iter().find_map(|op| {
                 if let Some(op_id) = op.id {
-                    if let Some(running_app) = &self.state {
-                        if &op_id == &running_app.operation_id {
+                    if let Some(operation_id) = &self.operation_id {
+                        if &op_id == operation_id {
                             let operation_label = op.label.clone().unwrap_or_else(|| "N/A".to_string());
                             let operation_status = op.status.clone().unwrap().to_string();
                             let patient_full_name = patient.iter()
