@@ -8,7 +8,8 @@ use application::{authenticate::StaffCredential, field};
 use application::{states, RunningApp, component as app_component};
 
 pub mod ws;
-use egui::{epaint, Align2, Color32, Frame, Window};
+use egui::text::Fonts;
+use egui::{epaint, Align, Align2, Color32, FontId, Frame, Layout, TextEdit, Window};
 use ws::receive::{
     Handle
 };
@@ -21,6 +22,8 @@ use cipher::{decrypt_message, generate_fixed_key, EncryptedText};
 
 pub mod component;
 use component::design;
+
+use application::component::format::get_width_from_text;
 
 use chrono::{Local};
 use eframe::{egui, App};
@@ -72,7 +75,8 @@ pub struct OperationApp {
     temp: Option<Temporary>,
     credential_panel: states::Login,
     category: states::Category,
-    operation_id: Option<i32>
+    operation_id: Option<i32>,
+    require_update: bool
 }
 
 impl OperationApp {
@@ -102,6 +106,7 @@ impl OperationApp {
             },
             category: states::Category::default(),
             operation_id: None,
+            require_update: false
         }
     }
 }
@@ -125,18 +130,34 @@ impl App for OperationApp {
                     ui.add_space(margin);
                     ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
                         if let Some(operation) = self.get_selected_operation() {
-                            ui.heading("OPERATION: "); 
-                            ui.label(operation.operation_label);
-                            ui.heading("STATUS: "); 
-                            ui.label(operation.operation_status);
-                            ui.heading("ROOM: ");
-                            ui.label(operation.room);
-                            ui.heading("ROOM ALIAS: ");
-                            ui.label(operation.room_code);
+                            ui.horizontal_wrapped(|ui| {
+                                ui.heading("OPERATION: ");       
+                                ui.add_enabled(false, 
+                                TextEdit::singleline(&mut operation.operation_label.to_string())
+                                    //.desired_width(get_width_from_text(ui, operation.operation_label.to_string()))
+                                );
+                                ui.heading("STATUS: "); 
+                                ui.add_enabled(false, 
+                                    TextEdit::singleline(&mut operation.operation_status.to_string())
+                                    //.desired_width(get_width_from_text(ui, operation.operation_status.to_string()))
+                                );
+                                ui.heading("ROOM: ");
+                                ui.add_enabled(false, 
+                                    TextEdit::singleline(&mut operation.room.to_string())
+                                    //.desired_width(get_width_from_text(ui, operation.room.to_string()))
+                                );
+                                ui.heading("ROOM ALIAS: ");
+                                ui.add_enabled(false, 
+                                    TextEdit::singleline(&mut operation.room_code.to_string())
+                                    //.desired_width(get_width_from_text(ui, operation.room_code.to_string()))
+                                );
+                            });
                         } else {
                             ui.label("🔎 SEARCH OPERATION");
-                            if ui.text_edit_singleline(&mut self.search.search_operation).changed() {
+                            if ui.text_edit_singleline(&mut self.search.search_operation).changed() || self.require_update == true {
                                 &self.filter_operation();
+
+                                self.require_update = false;
                             }
             
                             ui.separator();

@@ -72,6 +72,7 @@ impl Handle for OperationApp {
                                                         Operation::Update => {
                                                             println!("update: {:?}", message.data);
                                                             self.update(message.table_name, &message.data);
+                                                            
                                                         },
                                                         Operation::AuthHandshake => {
                                                             println!("statuscode {:?}", message.status_code);

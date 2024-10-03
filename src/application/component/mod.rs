@@ -3,6 +3,7 @@ use ewebsock::{WsMessage, WsSender};
 
 use crate::{component::design, SendMessage};
 
+pub mod format;
 
 pub fn login(ctx: &egui::Context, credential_panel: &mut crate::application::states::Login, sender: &mut WsSender) {
     let width = 500.0;
@@ -23,11 +24,11 @@ pub fn login(ctx: &egui::Context, credential_panel: &mut crate::application::sta
             };
             ui.horizontal(|ui| {
                 ui.label("email ");
-                design::input(ui, &mut credential_panel.field.email, color, design::Category::Frame);
+                design::input(ui, &mut credential_panel.field.email, color, design::Category::Frame, "email");
             });
             ui.horizontal(|ui| {
                 ui.label("password ");
-                design::input(ui, &mut credential_panel.field.password, color, design::Category::Frame);
+                design::input(ui, &mut credential_panel.field.password, color, design::Category::Frame, "password");
             });
             if ui.button("login").clicked() {
                 credential_panel.state = design::State::Waiting;

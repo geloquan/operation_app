@@ -27,6 +27,7 @@ impl Update for OperationApp {
                                 for op in operation.iter_mut() {
                                     if op.id == Some(update.id) {
                                         *op = update.new_row_data.clone(); 
+                                        self.require_update = true;
                                     }
                                 }
                             }
