@@ -1,4 +1,5 @@
 mod database;
+
 use database::table::{
     ui_builder::BuildTable, data::TableData, join::structure::OperationSelect, query, private::StaffAuthGrant
 };
@@ -8,8 +9,9 @@ use application::{authenticate::StaffCredential, field};
 use application::{states, RunningApp, component as app_component};
 
 pub mod ws;
+use egui::CursorIcon;
 use egui::text::Fonts;
-use egui::{epaint, Align, Align2, Color32, FontId, Frame, Layout, TextEdit, Window};
+use egui::{epaint, Align, Align2, Area, Color32, Direction, FontId, Frame, Layout, Pos2, RichText, Stroke, TextEdit, Window};
 use ws::receive::{
     Handle
 };
@@ -122,9 +124,12 @@ impl App for OperationApp {
         if self.staff.is_none() {
             app_component::login(&ctx, &mut self.credential_panel, &mut self.sender);
         } else {
+            let left_panel_rect: Pos2;
             egui::SidePanel::left("left").show(ctx, |ui| {
                 let margin = 20.0;
-                ui.set_min_width(250.0);
+                let rect = ui.min_rect();
+                let left_panel_rect = rect.center();
+                ui.set_max_width(250.0);
 
                 if self.staff.is_some() {
                     ui.add_space(margin);
@@ -133,25 +138,55 @@ impl App for OperationApp {
                             ui.horizontal_wrapped(|ui| {
                                 ui.heading("OPERATION: ");       
                                 ui.add_enabled(false, 
-                                TextEdit::singleline(&mut operation.operation_label.to_string())
-                                    //.desired_width(get_width_from_text(ui, operation.operation_label.to_string()))
+                                TextEdit::singleline(&mut operation.op_label.to_string())
                                 );
                                 ui.heading("STATUS: "); 
                                 ui.add_enabled(false, 
-                                    TextEdit::singleline(&mut operation.operation_status.to_string())
-                                    //.desired_width(get_width_from_text(ui, operation.operation_status.to_string()))
+                                    TextEdit::singleline(&mut operation.op_status.to_string())
                                 );
                                 ui.heading("ROOM: ");
                                 ui.add_enabled(false, 
-                                    TextEdit::singleline(&mut operation.room.to_string())
-                                    //.desired_width(get_width_from_text(ui, operation.room.to_string()))
+                                    TextEdit::singleline(&mut operation.room_name.to_string())
                                 );
-                                ui.heading("ROOM ALIAS: ");
+                                ui.heading("PATIENT: ");
                                 ui.add_enabled(false, 
-                                    TextEdit::singleline(&mut operation.room_code.to_string())
-                                    //.desired_width(get_width_from_text(ui, operation.room_code.to_string()))
+                                    TextEdit::singleline(&mut operation.patient_full_name.to_string())
                                 );
                             });
+                            let mut tool_response = Vec::new();
+                            let patient = ui.horizontal(|ui| {
+                                tool_response.push(ui.label(RichText::new("⚒").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                ui.vertical(|ui| {
+                                    tool_response.push(ui.heading(RichText::new("TOOLS").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                    tool_response.push(ui.label(RichText::new(format!("{:?} / {:?}", operation.on_site_tools, operation.total_tools)).size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                });
+                            }).response;
+                            let patient = patient.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+                            tool_response.push(patient);
+                            
+                            let mut staff_response = Vec::new();
+                            let staff = ui.horizontal(|ui| {
+                                staff_response.push(ui.label(RichText::new("👷").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                ui.vertical(|ui| {
+                                    staff_response.push(ui.heading(RichText::new("STAFF").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                    staff_response.push(ui.label(RichText::new(operation.staff_count.to_string()).size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                });
+                            }).response;
+                            let staff = staff.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+                            staff_response.push(staff);
+                        
+
+                            tool_response.iter().for_each(|v| {
+                                if v.clicked() {
+                                    println!("hello patient!");
+                                };
+                            });
+                            staff_response.iter().for_each(|v| {
+                                if v.clicked() {
+                                    println!("hello patient!");
+                                };
+                            });
+
                         } else {
                             ui.label("🔎 SEARCH OPERATION");
                             if ui.text_edit_singleline(&mut self.search.search_operation).changed() || self.require_update == true {
@@ -202,7 +237,9 @@ impl App for OperationApp {
             });
         }
 
-        egui::CentralPanel::default().show(ctx, |ui| {});
+        egui::CentralPanel::default().show(ctx, |ui| {
+            
+        });
     }
 }
 
