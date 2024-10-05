@@ -1,5 +1,5 @@
-use super::structure::{OperationSelect, PreOperativeDefault};
-use crate::{application, database::table::public::OperationStatus, OperationApp};
+use super::structure::{OperationSelect, PreOperativeDefault, PreOperativeToolReady};
+use crate::{application, database::table::{data, public::{EquipmentStatus, OperationStatus}}, OperationApp};
 
 impl OperationApp {
     pub fn select_operation(&mut self, id: &i32) {
@@ -13,7 +13,6 @@ impl OperationApp {
             let operation_tool = data.operation_tool.read().unwrap();
             
             let operation_staff = data.operation_staff.read().unwrap();
-            let staff = data.staff.read().unwrap();
     
             let operation_select: Option<PreOperativeDefault> = operation.iter().find_map(|op| {
                 if let Some(op_id) = op.id {
@@ -137,5 +136,50 @@ impl OperationApp {
     
             self.search.search_operation_result = operation_select.clone();
         } 
+    }
+
+    pub fn get_preoperative_tool_ready(&mut self) -> Option<Vec<PreOperativeToolReady>> {
+        
+        if let (Some(data), Some(operation_id)) = (&self.data, &self.operation_id) {
+            
+            let operation_tools = data.operation_tool.read().unwrap();
+            let operations = data.operation.read().unwrap();
+            let tools = data.tool.read().unwrap();
+            let equipment = data.equipment.read().unwrap();
+
+            let mut list: Vec<PreOperativeToolReady> = operation_tools.iter()
+                .filter(|op_tool| {
+                    operations.iter().any(|op| op.id.unwrap_or_else(|| 0) == op_tool.operation_id.unwrap_or_else(|| -1) && &op.id.unwrap_or_else(|| 0) == operation_id)
+                })
+                .filter_map(|op_tool| {
+                    if let Some(op_tool_id) = op_tool.id {
+                        let tool = tools.iter().find(|t| t.id == op_tool.tool_id);
+                        let equipment_item = tool.and_then(|t| equipment.iter().find(|e| e.id == t.info_id));
+                        
+                        let tool_name = equipment_item
+                            .map_or("Unknown Tool".to_string(), |e| e.name.clone().unwrap_or_else(|| "N/A".to_string()));
+            
+                        let tool_status = tool
+                            .map_or(EquipmentStatus::ForInspection, |t| t.status.clone().unwrap_or_else(|| EquipmentStatus::ForInspection));
+            
+                        Some(PreOperativeToolReady {
+                            operation_tool_id: op_tool_id,
+                            equipment_name: tool_name,
+                            on_site: op_tool.on_site.map_or(false, |value| value == 1), // Assuming `on_site` is an Option<bool>
+                            tool_status,
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            list.sort_by(|a, b| {
+                a.on_site.cmp(&b.on_site)
+            });
+            Some(list)
+        } else {
+            None
+        }
+    
     }
 }

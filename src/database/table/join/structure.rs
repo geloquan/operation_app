@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::database::table::{self, public::OperationStatus};
+use crate::database::table::{self, public::{EquipmentStatus, OperationStatus}};
 
 #[derive(Deserialize, Debug, Serialize, Default, Clone)]
 pub struct OperationSelect {
@@ -26,4 +26,11 @@ pub struct PreOperativeDefault {
     pub start_time: String,
     pub end_time: String,
     pub staff_count: i64
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PreOperativeToolReady {
+    pub operation_tool_id: i32,
+    pub equipment_name: String,
+    pub tool_status: EquipmentStatus,
+    pub on_site: bool,
 }

@@ -26,8 +26,13 @@ impl Update for OperationApp {
                                 let mut operation = data.operation.write().unwrap();
                                 for op in operation.iter_mut() {
                                     if op.id == Some(update.id) {
-                                        *op = update.new_row_data.clone(); 
-                                        self.require_update = true;
+                                        match serde_json::from_str::<Operation>(&update.new_row_data) {
+                                            Ok(new_row_data) => {
+                                                *op = new_row_data;
+                                                self.require_update = true;
+                                            }
+                                            Err(_) => {}
+                                        }
                                     }
                                 }
                             }
@@ -40,6 +45,10 @@ impl Update for OperationApp {
             TableTarget::PatientWardAssistant => todo!(),
             TableTarget::OperationStaff => todo!(),
             TableTarget::OperationTool => todo!(),
+            TableTarget::Alert => todo!(),
+            TableTarget::Frontdesk => todo!(),
+            TableTarget::AlertFrontdesk => todo!(),
+            TableTarget::AlertStaff => todo!(),
         }
     }
 }

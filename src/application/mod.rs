@@ -5,6 +5,10 @@ pub mod field;
 
 pub mod component;
 
+pub mod menu;
+
+pub mod data;
+
 use crate::database::table::tree::TableTree;
 
 pub struct RunningApp {

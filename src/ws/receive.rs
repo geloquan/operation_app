@@ -21,7 +21,11 @@ pub enum TableTarget {
     PatientWardRoom,
     PatientWardAssistant,
     OperationStaff,
-    OperationTool
+    OperationTool,
+    Alert,
+    Frontdesk,
+    AlertFrontdesk,
+    AlertStaff
 }
 #[derive(Deserialize, Debug, Serialize)]
 pub enum Operation {

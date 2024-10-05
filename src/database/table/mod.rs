@@ -9,4 +9,4 @@ pub mod window;
 pub mod tree;
 pub mod private;
 pub mod public;
-
+pub mod properties;

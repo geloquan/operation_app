@@ -6,5 +6,5 @@ use crate::database;
 #[derive(Deserialize, Serialize)]
 pub struct Update {
     pub id: i32,
-    pub new_row_data: database::table::public::Operation
+    pub new_row_data: String
 }
