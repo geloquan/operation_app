@@ -9,6 +9,9 @@ pub mod menu;
 
 pub mod data;
 
+pub mod server_notification;
+pub mod action_log;
+
 use crate::database::table::tree::TableTree;
 
 pub struct RunningApp {

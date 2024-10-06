@@ -7,10 +7,10 @@ use database::table::{
 
 pub mod application;
 use application::{authenticate::StaffCredential, field};
-use application::{states, RunningApp, component as app_component};
+use application::{*, states, RunningApp, component as app_component};
 
 pub mod ws;
-use egui::{CursorIcon, Margin, Rounding, WidgetText};
+use egui::{frame, CursorIcon, Id, LayerId, Margin, Order, Rounding, ScrollArea, WidgetText};
 use egui::text::Fonts;
 use egui::{menu, epaint, Align, Align2, Area, Color32, Direction, FontId, Frame, Layout, Pos2, RichText, Stroke, TextEdit, Window};
 use ws::receive::{
@@ -65,6 +65,10 @@ struct PreRunning {
     search_operation_result: Vec<OperationSelect>,
 } 
 
+const DARKMODE_RED_HIGHLIGHT: Color32 = Color32::from_rgb(45, 8, 10);
+const DEBUGCOLOR: Color32 = Color32::GOLD;
+const SIDEPANELSIZE: f32 = 250.0;
+
 pub struct OperationApp {
     data: Option<TableData>,
     rx: tokio::sync::mpsc::Receiver<String>,
@@ -80,8 +84,9 @@ pub struct OperationApp {
     category: states::Category,
     operation_id: Option<i32>,
     require_update: bool,
-    selected_menu: Option<application::menu::selected::Menu>
-
+    selected_menu: Option<application::menu::selected::Menu>,
+    action_log: Option<action_log::ActionLog>,
+    server_notification: Option<server_notification::ServerNotification>,
 }
 
 impl OperationApp {
@@ -112,7 +117,9 @@ impl OperationApp {
             category: states::Category::default(),
             operation_id: None,
             require_update: false,
-            selected_menu: None
+            selected_menu: None,
+            action_log: None,
+            server_notification: None,
         }
     }
 }
@@ -169,7 +176,7 @@ impl App for OperationApp {
                 let margin = 20.0;
                 let rect = ui.min_rect();
                 let left_panel_rect = rect.center();
-                ui.set_max_width(250.0);
+                ui.set_max_width(SIDEPANELSIZE);
                 
                 if let Some(operation) = self.get_selected_operation() {
                     ui.horizontal_wrapped(|ui| {
@@ -200,7 +207,66 @@ impl App for OperationApp {
                     
                 });
             });
-            egui::SidePanel::right("right").show(ctx, |ui| {});
+            egui::SidePanel::right("right").show(ctx, |ui| {
+                let available_height = ui.available_height();
+                let half_height = available_height / 2.0;
+
+                ui.set_max_width(SIDEPANELSIZE);
+                ui.set_min_width(SIDEPANELSIZE);
+                
+                Frame::none()
+                .fill(DEBUGCOLOR)
+                .show(ui, |ui| {
+                    ui.set_height(half_height);
+                    
+                    Frame::none()
+                    .inner_margin(Margin::same(20.0))
+                    .show(ui, |ui| {
+                        ui.heading(RichText::new("Action log"));
+                    });
+                    
+                    ScrollArea::vertical()
+                    .id_salt("action_log")
+                    .auto_shrink([false; 2]) // Disable auto-shrink if needed
+                    .show(ui, |ui| {
+                        if let Some(action_log) = &self.action_log {
+                            for row in &action_log.record {
+                                ui.label("menu: ");
+                                ui.label("status: ");
+                                ui.label("description");
+                                ui.label("date: ");
+                            }
+                        }
+                    
+                    });
+                });
+                Frame::none()
+                .fill(DEBUGCOLOR)
+                .show(ui, |ui| {
+                    ui.set_height(half_height);
+
+                    Frame::none()
+                    .inner_margin(Margin::same(20.0))
+                    .show(ui, |ui| {
+                        ui.heading(RichText::new("Server log"));
+                    });
+
+                    ScrollArea::vertical()
+                    .id_salt("server_log")
+                    .auto_shrink([false; 2]) // Disable auto-shrink if needed
+                    .show(ui, |ui| {
+                        if let Some(server_notification) = &self.server_notification {
+                            for row in &server_notification.record {
+                                ui.label("menu: ");
+                                ui.label("description: ");
+                                ui.label("staff: ");
+                                ui.label("date: ");
+                            }
+                        }
+                    
+                    });
+                });
+            });
             egui::CentralPanel::default().show(ctx, |ui| {
                 if self.staff.is_some() {
                     ui.add_space(50.0);
@@ -247,6 +313,7 @@ impl App for OperationApp {
                 
             });
             egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
+                ui.horizontal(|ui| ui.heading("options:"));
                 if let Some(operation) = self.get_selected_operation() {
                     ui.horizontal_centered(|ui| {
                         let mut staff_clr: Color32 = Color32::default();
@@ -255,7 +322,7 @@ impl App for OperationApp {
                         if let Some(selected_menu) = &self.selected_menu {
                             match selected_menu {
                                 selected::Menu::PreOperativeDefault => {Color32::default();},
-                                selected::Menu::PreOperativeToolReady => {tool_clr = Color32::from_rgb(45, 8, 10);},
+                                selected::Menu::PreOperativeToolReady => {tool_clr = DARKMODE_RED_HIGHLIGHT},
                             }
                         }
 
