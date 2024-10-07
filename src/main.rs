@@ -85,6 +85,7 @@ pub struct OperationApp {
     operation_id: Option<i32>,
     require_update: bool,
     selected_menu: Option<application::menu::selected::Menu>,
+    selected_action: Option<application::menu::selected::Action>,
     action_log: Option<action_log::ActionLog>,
     server_notification: Option<server_notification::ServerNotification>,
 }
@@ -118,6 +119,7 @@ impl OperationApp {
             operation_id: None,
             require_update: false,
             selected_menu: None,
+            selected_action: None,
             action_log: None,
             server_notification: None,
         }
@@ -313,7 +315,11 @@ impl App for OperationApp {
                 
             });
             egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-                ui.horizontal(|ui| ui.heading("options:"));
+                Frame::none()
+                .inner_margin(Margin::same(10.))
+                .show(ui, |ui| {
+                        ui.horizontal(|ui| ui.heading("options:"));
+                    });
                 if let Some(operation) = self.get_selected_operation() {
                     ui.horizontal_centered(|ui| {
                         let mut staff_clr: Color32 = Color32::default();
@@ -388,6 +394,41 @@ impl App for OperationApp {
                 }
                 ui.add_space(40.0);
             });
+            if let Some(menu) = &self.selected_menu {
+                egui::TopBottomPanel::bottom("bottome").show(ctx, |ui| {
+                    Frame::none()
+                    .inner_margin(Margin::same(10.))
+                    .show(ui, |ui| {
+                        ui.heading("actions")
+                    });
+                    match menu {
+                        selected::Menu::PreOperativeDefault => todo!(),
+                        selected::Menu::PreOperativeToolReady => {
+                            Frame::none()
+                            .rounding(Rounding::same(20.0))
+                            .fill(Color32::TRANSPARENT)
+                            .inner_margin(Margin::same(20.0))
+                            .show(ui, |ui| {
+                                let mut tool_response = Vec::new();
+                                let tool = ui.horizontal(|ui| {
+                                    tool_response.push(ui.label(RichText::new("⊞").size(40.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                    tool_response.push(ui.heading(RichText::new("add new requirement").size(20.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                }).response;
+                                let tool = tool.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+                                tool_response.push(tool);
+            
+                                tool_response.iter().for_each(|v: &egui::Response| {
+                                    if v.clicked() && self.selected_action != Some(application::menu::selected::Action::AddRequirement) {
+                                        self.selected_action = Some(application::menu::selected::Action::AddRequirement);
+                                    } else if v.clicked() {
+                                        self.selected_action = None;
+                                    };
+                                });
+                            });
+                        },
+                    }
+                });
+            }
         }
     }
 }
