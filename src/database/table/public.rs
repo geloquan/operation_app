@@ -213,3 +213,10 @@ pub struct AlertStaff {
     pub staff_id: Option<i32>,
     pub alert_id: Option<i32>,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaffActionLog {
+    pub id: Option<i32>,
+    pub staff: Option<i32>,
+    pub date_time: Option<String>,
+        
+}

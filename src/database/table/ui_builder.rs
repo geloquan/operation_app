@@ -17,12 +17,12 @@ impl BuildTable for OperationApp {
         ui.vertical(|ui| {
             let table_return = if let WindowTable::OperationSelect(Some(s)) = &window_table {
                 let tbl = TableBuilder::new(ui)
-                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
-                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
-                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
-                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
-                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
-                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
+                .column(Column::auto().resizable(true).at_least(60.0).at_most(200.0))
+                .column(Column::auto().resizable(true).at_least(60.0).at_most(200.0))
+                .column(Column::auto().resizable(true).at_least(60.0).at_most(200.0))
+                .column(Column::auto().resizable(true).at_least(60.0).at_most(200.0))
+                .column(Column::auto().resizable(true).at_least(60.0).at_most(200.0))
+                .column(Column::auto().resizable(true).at_least(60.0).at_most(200.0))
                 .auto_shrink(true)
                 .striped(true)
                 .header(20.0, |mut header| {

@@ -147,6 +147,7 @@ impl App for OperationApp {
                             ui.label("name");
                             ui.label(staff_credential.full_name.clone());
                         });
+                        
                         ui.horizontal(|ui| {
                             ui.label("email");
                             ui.label(staff_credential.email.clone());
