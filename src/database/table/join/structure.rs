@@ -34,3 +34,11 @@ pub struct PreOperativeToolReady {
     pub tool_status: EquipmentStatus,
     pub on_site: bool,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActionLogProperty {
+    pub staff: String,
+    pub label: String,
+    pub before_val: String,
+    pub after_val: String,
+    pub date: String,
+}

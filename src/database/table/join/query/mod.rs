@@ -1,5 +1,5 @@
-use super::structure::{OperationSelect, PreOperativeDefault, PreOperativeToolReady};
-use crate::{application, database::table::{data, public::{EquipmentStatus, OperationStatus}}, OperationApp};
+use super::structure::{ActionLogProperty, OperationSelect, PreOperativeDefault, PreOperativeToolReady};
+use crate::{application, database::table::{data, public::{ActionLog, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
 
 impl OperationApp {
     pub fn select_operation(&mut self, id: &i32) {
@@ -181,5 +181,60 @@ impl OperationApp {
             None
         }
     
+    }
+
+    pub fn get_action_log_operation(&mut self) -> Option<Vec<ActionLogProperty>> {
+        if let Some(ref data) = self.data {
+            let staff = data.staff.read().unwrap();
+            let action_log = data.action_log.read().unwrap();
+            let action_logs: Option<Vec<ActionLogProperty>> = Some(
+                action_log.iter()
+                    .filter(|al: &&ActionLog| {
+                        if let Some(operation_id) = &self.operation_id {
+                            if let (Some(table_name), Some(id)) = (&al.table_name, al.row_id) {
+                                return table_name == &Tables::Operation && operation_id == &id;
+                            }
+                        }
+                        false
+                    })
+                    .filter_map(|al| {
+                        let staff_full_name = staff.iter()
+                            .find(|s| al.staff_id.map_or(false, |id| id == s.id.unwrap_or(0)))
+                            .map(|s| {format!(
+                                "{} {}",
+                                s.first_name.clone().unwrap_or_else(|| "N/A".to_string()),
+                                s.last_name.clone().unwrap_or_else(|| "N/A".to_string())
+                            )})
+                            .unwrap_or_else(|| "N/A".to_string());
+                        if let (
+                                Some(label),
+                                Some(new_value),
+                                Some(old_value),
+                                Some(date_time)
+                            ) = 
+                            (
+                                &al.label,
+                                &al.new_value,
+                                &al.old_value,
+                                &al.date_time
+                            )
+                        {
+                            Some(ActionLogProperty {
+                                label: label.to_string(),
+                                staff: staff_full_name.clone(),
+                                before_val: old_value.clone(),
+                                after_val: new_value.clone(),
+                                date: date_time.clone()
+                            }) 
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+                );
+            action_logs
+        } else {
+            None
+        }
     }
 }

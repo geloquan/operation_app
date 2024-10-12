@@ -1,6 +1,8 @@
 use std::fmt;
 use serde::{Serialize, Deserialize};
 
+use super::Tables;
+
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum EquipmentStatus {
@@ -76,6 +78,27 @@ pub enum AlertNotificationStatus {
     Resolved
 }
 
+#[derive(Clone, Debug, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub enum ActionLogLabel {
+    OnSiteToggle,
+    AddEquipmentRequirement
+}
+impl fmt::Display for ActionLogLabel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let action_log_str = match self {
+            ActionLogLabel::OnSiteToggle => "Tool On-site toggled",
+            ActionLogLabel::AddEquipmentRequirement => "Equipment Requirement Added",
+        };
+        write!(f, "{}", action_log_str)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub enum ActionLogAction {
+    Create,
+    Update,
+    Delete
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Equipment {
     pub id: Option<i32>,
@@ -214,9 +237,14 @@ pub struct AlertStaff {
     pub alert_id: Option<i32>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StaffActionLog {
+pub struct ActionLog {
     pub id: Option<i32>,
-    pub staff: Option<i32>,
-    pub date_time: Option<String>,
-        
+    pub staff_id: Option<i32>,
+    pub label: Option<ActionLogLabel>,
+    pub table_name: Option<Tables>,
+    pub row_id: Option<i32>,
+    pub old_value: Option<String>,
+    pub new_value: Option<String>,
+    pub action: Option<ActionLogAction>,
+    pub date_time: Option<String>       
 }

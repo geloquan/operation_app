@@ -2,7 +2,7 @@ mod database;
 
 use application::menu::selected;
 use database::table::{
-    ui_builder::BuildTable, data::TableData, join::structure::OperationSelect, query, private::StaffAuthGrant
+    ui_builder::BuildTable, data::TableData, join::structure::OperationSelect, query::{self}, private::StaffAuthGrant
 };
 
 pub mod application;
@@ -86,8 +86,6 @@ pub struct OperationApp {
     require_update: bool,
     selected_menu: Option<application::menu::selected::Menu>,
     selected_action: Option<application::menu::selected::Action>,
-    action_log: Option<action_log::ActionLog>,
-    server_notification: Option<server_notification::ServerNotification>,
 }
 
 impl OperationApp {
@@ -95,7 +93,7 @@ impl OperationApp {
         let (tx, rx) = tokio::sync::mpsc::channel(32);
         
         let options = ewebsock::Options::default();
-        let (sender, receiver) = ewebsock::connect("ws://127.0.0.15:8080", options).unwrap();
+        let (sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", options).unwrap();
 
         OperationApp {
             data: None,
@@ -120,8 +118,6 @@ impl OperationApp {
             require_update: false,
             selected_menu: None,
             selected_action: None,
-            action_log: None,
-            server_notification: None,
         }
     }
 }
@@ -211,16 +207,12 @@ impl App for OperationApp {
                 });
             });
             egui::SidePanel::right("right").show(ctx, |ui| {
-                let available_height = ui.available_height();
-                let half_height = available_height / 2.0;
-
                 ui.set_max_width(SIDEPANELSIZE);
-                ui.set_min_width(SIDEPANELSIZE);
                 
                 Frame::none()
-                .fill(DEBUGCOLOR)
+                .fill(Color32::default())
                 .show(ui, |ui| {
-                    ui.set_height(half_height);
+                    ui.set_height(ui.available_height());
                     
                     Frame::none()
                     .inner_margin(Margin::same(20.0))
@@ -232,38 +224,28 @@ impl App for OperationApp {
                     .id_salt("action_log")
                     .auto_shrink([false; 2]) // Disable auto-shrink if needed
                     .show(ui, |ui| {
-                        if let Some(action_log) = &self.action_log {
-                            for row in &action_log.record {
-                                ui.label("menu: ");
-                                ui.label("status: ");
-                                ui.label("description");
-                                ui.label("date: ");
-                            }
-                        }
-                    
-                    });
-                });
-                Frame::none()
-                .fill(DEBUGCOLOR)
-                .show(ui, |ui| {
-                    ui.set_height(half_height);
-
-                    Frame::none()
-                    .inner_margin(Margin::same(20.0))
-                    .show(ui, |ui| {
-                        ui.heading(RichText::new("Server log"));
-                    });
-
-                    ScrollArea::vertical()
-                    .id_salt("server_log")
-                    .auto_shrink([false; 2]) // Disable auto-shrink if needed
-                    .show(ui, |ui| {
-                        if let Some(server_notification) = &self.server_notification {
-                            for row in &server_notification.record {
-                                ui.label("menu: ");
-                                ui.label("description: ");
-                                ui.label("staff: ");
-                                ui.label("date: ");
+                        if let Some(action_log) = self.get_action_log_operation() {
+                            for row in &action_log {
+                                ui.horizontal(|ui| {
+                                    ui.label("label: ");
+                                    ui.label(row.label.clone());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.label("staff: ");
+                                    ui.label(row.staff.clone());
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.label("before: ");
+                                    ui.label(row.before_val.clone());
+                                    ui.label("after: ");
+                                    ui.label(row.after_val.clone());
+                                    
+                                });
+                                ui.horizontal(|ui| {
+                                    ui.label("date: ");
+                                    ui.label(row.date.clone());
+                                });
+                                ui.separator();
                             }
                         }
                     

@@ -10,3 +10,25 @@ pub mod tree;
 pub mod private;
 pub mod public;
 pub mod properties;
+
+#[derive(Clone, Debug, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub enum Tables {
+    Equipment,
+    Room,
+    Tool,
+    Staff,
+    ToolReservation,
+    ToolDesignatedRoom,
+    ToolInspector,
+    Patient,
+    Operation,
+    PatientWardRoom,
+    PatientWardAssistant,
+    OperationStaff,
+    OperationTool,
+    Alert,
+    Frontdesk,
+    AlertFrontdesk,
+    AlertStaff,
+    ActionLog
+}
