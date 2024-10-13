@@ -3,9 +3,11 @@ use ewebsock::{WsMessage, WsSender};
 
 use crate::{component::design, SendMessage};
 
+use super::authenticate::StaffCredential;
+
 pub mod format;
 
-pub fn login(ctx: &egui::Context, credential_panel: &mut crate::application::states::Login, sender: &mut WsSender) {
+pub fn login(ctx: &egui::Context, credential_panel: &mut crate::application::states::Login, sender: &mut WsSender, staff: &Option<StaffCredential>) {
     let width = 500.0;
     let height = 250.0;
 
@@ -35,7 +37,9 @@ pub fn login(ctx: &egui::Context, credential_panel: &mut crate::application::sta
                 let request_json = serde_json::to_string(&SendMessage {
                     level: "Operation".to_string(),
                     method: "Authenticate".to_string(),
-                    data: Some(serde_json::to_value(&credential_panel.field).unwrap())
+                    data: Some(serde_json::to_value(&credential_panel.field).unwrap()),
+                    staff_credential: staff.clone(),
+                    action: None
                 }).unwrap();
                 sender.send(ewebsock::WsMessage::Text(request_json.to_string()));
                 

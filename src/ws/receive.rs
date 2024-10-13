@@ -25,7 +25,8 @@ pub enum TableTarget {
     Alert,
     Frontdesk,
     AlertFrontdesk,
-    AlertStaff
+    AlertStaff,
+    ActionLog
 }
 #[derive(Deserialize, Debug, Serialize)]
 pub enum Operation {
@@ -74,9 +75,8 @@ impl Handle for OperationApp {
                                                             }
                                                         },
                                                         Operation::Update => {
-                                                            println!("update: {:?}", message.data);
-                                                            self.update(message.table_name, &message.data);
-                                                            
+                                                            println!("update: {:?}", message);
+                                                            self.update(message);
                                                         },
                                                         Operation::AuthHandshake => {
                                                             println!("statuscode {:?}", message.status_code);
@@ -113,12 +113,14 @@ impl Handle for OperationApp {
                 },
                 ewebsock::WsEvent::Error(_) => {
                     let options = ewebsock::Options::default();
-                    let (mut sender, receiver) = ewebsock::connect("ws://127.0.0.15:8080", options).unwrap();
+                    let (mut sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", options).unwrap();
                     
                     let request_json = serde_json::to_string(&SendMessage {
                         level: "Operation".to_string(),
                         method: "Initial".to_string(),
                         data: Some(json!({"content": "Hello from button('Send Message')!"})),
+                        staff_credential: self.staff.clone(),
+                        action: None
                     }).unwrap();
                     sender.send(ewebsock::WsMessage::Text(request_json));
 

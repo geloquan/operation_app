@@ -1,9 +1,11 @@
 use egui::{Button, Color32, Frame, Label, Margin, RichText, Sense, Ui};
 use egui_extras::{TableBuilder, Column};
 
+use super::private::OperationToolOnSiteToggle;
 use super::public::OperationTool;
 use super::{data::TableData, window::WindowTable};
 
+use crate::action;
 use crate::ws::receive::TableTarget;
 use crate::application::data::{self, dispatch};
 use crate::{application::data::dispatch::Dispatch, OperationApp};
@@ -75,6 +77,7 @@ impl BuildTable for OperationApp {
                 .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
                 .auto_shrink(true)
                 .striped(true)
+                .max_scroll_height(300.0)
                 .header(20.0, |mut header| {
                     let headings = [
                         "EQUIPMENT",
@@ -102,12 +105,16 @@ impl BuildTable for OperationApp {
                                 match content.on_site {
                                     true => {
                                         if ui.checkbox(&mut true, "").interact(Sense::click()).clicked() {
-                                            self.action(TableTarget::OperationTool, dispatch::Options::OperationToolOnSiteToogle(content.operation_tool_id.clone()));
+                                            let toggle = OperationToolOnSiteToggle{tool_id: content.operation_tool_id, operation_id: self.operation_id.unwrap_or_else(|| 0), on_site_value: false};
+                                            println!("to false {:?}", toggle);
+                                            self.action(action::Actions::OperationToolOnSiteToggle(toggle));
                                         }
                                     },
                                     false => {
-                                        if ui.checkbox(&mut false, "").interact(Sense::click()).clicked() {
-                                            self.action(TableTarget::OperationTool, dispatch::Options::OperationToolOnSiteToogle(content.operation_tool_id.clone()));
+                                        if ui.checkbox(&mut false, "").interact(Sense::click()).clicked() { 
+                                            let toggle = OperationToolOnSiteToggle{tool_id: content.operation_tool_id, operation_id: self.operation_id.unwrap_or_else(|| 0), on_site_value: true};
+                                            println!("to true {:?}", toggle);
+                                            self.action(action::Actions::OperationToolOnSiteToggle(toggle));
                                         }
                                     },
                                 }

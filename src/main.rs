@@ -1,5 +1,7 @@
 mod database;
 
+mod action;
+
 use application::menu::selected;
 use database::table::{
     ui_builder::BuildTable, data::TableData, join::structure::OperationSelect, query::{self}, private::StaffAuthGrant
@@ -40,6 +42,8 @@ struct SendMessage {
     level: String,
     method: String,
     data: Option<serde_json::Value>,
+    staff_credential: Option<StaffCredential>,
+    action: Option<action::Actions>
 }
 #[derive(Deserialize, Debug, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -131,7 +135,7 @@ impl App for OperationApp {
         }
 
         if self.staff.is_none() {
-            app_component::login(&ctx, &mut self.credential_panel, &mut self.sender);
+            app_component::login(&ctx, &mut self.credential_panel, &mut self.sender, &self.staff);
         } 
 
         if self.staff.is_some() {

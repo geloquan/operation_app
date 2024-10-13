@@ -6,7 +6,7 @@ impl OperationApp {
         self.operation_id = Some(*id);
     }
     pub fn get_selected_operation(&mut self) -> Option<PreOperativeDefault> {
-        if let Some(ref data) = self.data {
+        if let Some(data) = &self.data {
             let operation = data.operation.read().unwrap();
             let patient = data.patient.read().unwrap();
             let room = data.room.read().unwrap();
@@ -192,12 +192,12 @@ impl OperationApp {
                     .filter(|al: &&ActionLog| {
                         if let Some(operation_id) = &self.operation_id {
                             if let (Some(table_name), Some(id)) = (&al.table_name, al.row_id) {
-                                return table_name == &Tables::Operation && operation_id == &id;
+                                return table_name == &Tables::OperationTool && operation_id == &id;
                             }
                         }
                         false
                     })
-                    .filter_map(|al| {
+                    .filter_map(|al: &ActionLog| {
                         let staff_full_name = staff.iter()
                             .find(|s| al.staff_id.map_or(false, |id| id == s.id.unwrap_or(0)))
                             .map(|s| {format!(
