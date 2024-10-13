@@ -106,14 +106,12 @@ impl BuildTable for OperationApp {
                                     true => {
                                         if ui.checkbox(&mut true, "").interact(Sense::click()).clicked() {
                                             let toggle = OperationToolOnSiteToggle{tool_id: content.operation_tool_id, operation_id: self.operation_id.unwrap_or_else(|| 0), on_site_value: false};
-                                            println!("to false {:?}", toggle);
                                             self.action(action::Actions::OperationToolOnSiteToggle(toggle));
                                         }
                                     },
                                     false => {
                                         if ui.checkbox(&mut false, "").interact(Sense::click()).clicked() { 
                                             let toggle = OperationToolOnSiteToggle{tool_id: content.operation_tool_id, operation_id: self.operation_id.unwrap_or_else(|| 0), on_site_value: true};
-                                            println!("to true {:?}", toggle);
                                             self.action(action::Actions::OperationToolOnSiteToggle(toggle));
                                         }
                                     },

@@ -1,6 +1,8 @@
 mod database;
-
+mod error;
 mod action;
+
+use std::{sync::{Arc, Mutex}, time::Duration};
 
 use application::menu::selected;
 use database::table::{
@@ -33,9 +35,12 @@ use application::component::format::get_width_from_text;
 use chrono::{Local};
 use eframe::{egui, App};
 use egui_extras::{TableBuilder, Column};
-use ewebsock::{self, WsReceiver, WsSender};
+use ewebsock::{self, WsMessage, WsReceiver, WsSender};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, to_string};
+
+type SafeOutbox = Arc<Mutex<Vec<WsMessage>>>;
+type SafeMailbox = Arc<Mutex<Vec<WsMessage>>>;
 
 #[derive(Deserialize, Debug, Serialize)]
 struct SendMessage {
@@ -74,11 +79,9 @@ const DEBUGCOLOR: Color32 = Color32::GOLD;
 const SIDEPANELSIZE: f32 = 250.0;
 
 pub struct OperationApp {
+    outbox: Arc<Mutex<Vec<WsMessage>>>,
+    
     data: Option<TableData>,
-    rx: tokio::sync::mpsc::Receiver<String>,
-    tx: tokio::sync::mpsc::Sender<String>,
-    sender: WsSender,
-    receiver: WsReceiver,
     search: PreRunning,
     staff: Option<StaffCredential>,
     //central_window: OperationWindow,
@@ -90,21 +93,16 @@ pub struct OperationApp {
     require_update: bool,
     selected_menu: Option<application::menu::selected::Menu>,
     selected_action: Option<application::menu::selected::Action>,
+    shared_value: Arc<Mutex<i32>>
 }
 
 impl OperationApp {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let (tx, rx) = tokio::sync::mpsc::channel(32);
-        
-        let options = ewebsock::Options::default();
-        let (sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", options).unwrap();
+    fn new(cc: &eframe::CreationContext<'_>, shared_value: Arc<Mutex<i32>>, outbox: Arc<Mutex<Vec<WsMessage>>>) -> Self {
 
         OperationApp {
+            outbox,
+            
             data: None,
-            rx,
-            tx,
-            sender,
-            receiver,
             search: PreRunning::default(),
             staff: None,
             state: None,
@@ -122,6 +120,7 @@ impl OperationApp {
             require_update: false,
             selected_menu: None,
             selected_action: None,
+            shared_value
         }
     }
 }
@@ -133,9 +132,8 @@ impl App for OperationApp {
         if let Some(id) = self.operation_id {
             self.select_operation(&id);
         }
-
         if self.staff.is_none() {
-            app_component::login(&ctx, &mut self.credential_panel, &mut self.sender, &self.staff);
+            app_component::login(&ctx, &mut self.credential_panel, &self.outbox, &self.staff);
         } 
 
         if self.staff.is_some() {
@@ -158,7 +156,7 @@ impl App for OperationApp {
                         }
                     }
                     let current_time = Local::now(); 
-                    let formatted_time = format!("Current Time: {}", current_time.format("%Y-%m-%d %H:%M:%S").to_string());
+                    let formatted_time = format!("Current Time: {} : {}", current_time.format("%Y-%m-%d %H:%M:%S").to_string(), self.shared_value.lock().unwrap());
                     let font_id: FontId = FontId::default(); 
 
                     let text_size = ui.fonts(|font| {
@@ -423,8 +421,130 @@ impl App for OperationApp {
 #[tokio::main]
 async fn main() {
     let native_options = eframe::NativeOptions::default();
-    let _ = eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
-        let app = OperationApp::new(cc);
+    let shared_value = Arc::new(Mutex::new(0));
+    let timer = shared_value.clone(); 
+    
+    let outbox: SafeOutbox = Arc::new(Mutex::new(Vec::new()));
+    let outbox_clone: SafeOutbox = outbox.clone();
+        
+    let mailbox: SafeMailbox = Arc::new(Mutex::new(Vec::new()));
+    let mailbox_clone: SafeMailbox = outbox.clone();
+
+    tokio::spawn(async move {
+        async_updater(timer).await;
+        websocket(outbox_clone, mailbox_clone).await;
+    });
+    run_egui_app(shared_value, outbox);
+}
+
+fn run_egui_app(shared_value: Arc<Mutex<i32>>, outbox: Arc<Mutex<Vec<WsMessage>>>) -> Result<(), eframe::Error> {
+    let native_options = eframe::NativeOptions::default();
+
+
+    eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
+        let app = OperationApp::new(cc, shared_value, outbox);
         Ok(Box::new(app))
-    }));
+    }))
+}
+
+
+async fn async_updater(value: Arc<Mutex<i32>>) {
+    loop {
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        let mut val = value.lock().unwrap(); 
+        *val += 1;
+        println!("Value updated async: {}", *val);
+    }
+}
+async fn websocket(outbox: SafeOutbox, mailbox: SafeMailbox) {
+    let (sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", ewebsock::Options::default()).unwrap();
+    
+    loop {
+        
+    }
+    
+    //if let Some(msg) = receiver.try_recv() {
+    //    match msg {
+    //        ewebsock::WsEvent::Opened => {
+    //            
+    //        },
+    //        ewebsock::WsEvent::Message(text) => {
+    //            match text {
+    //                ewebsock::WsMessage::Binary(vec) => todo!(),
+    //                ewebsock::WsMessage::Text(text) => {
+    //                    println!("TEXT~!");
+    //                    match serde_json::from_str::<EncryptedText>(&text) {
+    //                        Ok(encrypted_text) => {
+    //                            if let Ok(key) = &generate_fixed_key() {
+    //                                if let Ok(decrypted_text) = decrypt_message(key, &encrypted_text.nonce, &encrypted_text.cipher_text) {
+    //                                    match serde_json::from_str::<ReceiveMessage>(&decrypted_text) {
+    //                                        Ok(message) => {
+    //                                            match message.operation {
+    //                                                Operation::Initialize => {
+    //                                                    if let Some(data) = &mut self.data {
+    //                                                        data.initialize(message.data);
+    //                                                    } else {
+    //                                                        let mut new_table_data = TableData::new();
+    //                                                        new_table_data.initialize(message.data);
+    //                                                        self.data = Some(new_table_data);
+    //                                                    }
+    //                                                },
+    //                                                Operation::Update => {
+    //                                                    println!("update: {:?}", message);
+    //                                                    self.update(message);
+    //                                                },
+    //                                                Operation::AuthHandshake => {
+    //                                                    println!("statuscode {:?}", message.status_code);
+    //                                                    if let Ok(staff_credential) = serde_json::from_str::<StaffCredential>(&message.data) {
+    //                                                        self.staff = Some(staff_credential);
+    //                                                    } else {
+    //                                                        self.staff = None;
+    //                                                    }
+    //                                                    if message.status_code == "success" { 
+    //                                                        self.credential_panel.state = design::State::Valid
+    //                                                    }
+    //                                                    else if message.status_code == "failed" { 
+    //                                                        self.credential_panel.state = design::State::Error 
+    //                                                    }
+    //                                                }
+    //                                            }
+    //                                        },
+    //                                        Err(_) => {
+    //                                            println!("err parsing: ReceiveMessage");
+    //                                        },
+    //                                    }
+    //                                }
+    //                            }
+    //                        },
+    //                        Err(_) => {
+    //                            
+    //                        },
+    //                    }
+    //                },
+    //                ewebsock::WsMessage::Unknown(_) => todo!(),
+    //                ewebsock::WsMessage::Ping(vec) => todo!(),
+    //                ewebsock::WsMessage::Pong(vec) => todo!(),
+    //            }
+    //        },
+    //        ewebsock::WsEvent::Error(_) => {
+    //            let options = ewebsock::Options::default();
+    //            let (mut sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", options).unwrap();
+    //            
+    //            let request_json = serde_json::to_string(&SendMessage {
+    //                level: "Operation".to_string(),
+    //                method: "Initial".to_string(),
+    //                data: Some(json!({"content": "Hello from button('Send Message')!"})),
+    //                staff_credential: self.staff.clone(),
+    //                action: None
+    //            }).unwrap();
+    //            sender.send(ewebsock::WsMessage::Text(request_json));
+//
+    //        },
+    //        ewebsock::WsEvent::Closed => {
+//
+    //        },
+    //    }
+    //}
+
 }

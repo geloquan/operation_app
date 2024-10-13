@@ -1,13 +1,13 @@
 use egui::{Align2, Color32, Ui, Window};
 use ewebsock::{WsMessage, WsSender};
 
-use crate::{component::design, SendMessage};
+use crate::{component::design, safe_outbox, SendMessage};
 
 use super::authenticate::StaffCredential;
 
 pub mod format;
 
-pub fn login(ctx: &egui::Context, credential_panel: &mut crate::application::states::Login, sender: &mut WsSender, staff: &Option<StaffCredential>) {
+pub fn login(ctx: &egui::Context, credential_panel: &mut crate::application::states::Login, outbox: &safe_outbox, staff: &Option<StaffCredential>) {
     let width = 500.0;
     let height = 250.0;
 
@@ -41,7 +41,15 @@ pub fn login(ctx: &egui::Context, credential_panel: &mut crate::application::sta
                     staff_credential: staff.clone(),
                     action: None
                 }).unwrap();
-                sender.send(ewebsock::WsMessage::Text(request_json.to_string()));
+
+                //outbox.
+                //sender.send(ewebsock::WsMessage::Text(request_json.to_string()));
+                match outbox.lock() {
+                    Ok(mut outbox) => {
+                        outbox.push(ewebsock::WsMessage::Text(request_json.to_string()));
+                    },
+                    Err(_) => todo!(),
+                }
                 
                 credential_panel.field.password = "".to_string();
                 credential_panel.field.email = "".to_string();
