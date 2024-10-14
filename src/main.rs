@@ -92,15 +92,15 @@ const SIDEPANELSIZE: f32 = 250.0;
 
 pub struct OperationApp {
     outbox: Arc<Mutex<Vec<WsMessage>>>,
-    server_connected: Arc<Mutex<bool>>,
+    server_connection: SafeServerConnection,
     
-    data: Option<TableData>,
+    data: SafeDataTable,
+    staff: SafeStaff,
+    credential_panel: SafeCredentialPanel,
     search: PreRunning,
-    staff: Arc<Mutex<Option<StaffCredential>>>,
     //central_window: OperationWindow,
     state: Option<RunningApp>,
     temp: Option<Temporary>,
-    credential_panel: Arc<Mutex<Option<states::Login>>>,
     category: states::Category,
     operation_id: Option<i32>,
     require_update: bool,
@@ -110,18 +110,22 @@ pub struct OperationApp {
 }
 
 impl OperationApp {
-    fn new(cc: &eframe::CreationContext<'_>, shared_value: Arc<Mutex<i32>>, outbox: Arc<Mutex<Vec<WsMessage>>>) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>, shared_value: Arc<Mutex<i32>>, outbox: SafeOutbox,
+    server_connection: SafeServerConnection,
+    staff: SafeStaff,
+    data_table: SafeDataTable,
+    credential_panel: SafeCredentialPanel
+    ) -> Self {
 
         OperationApp {
-            outbox,
-            server_connected,
-            
-            data: None,
+            outbox: outbox,
+            server_connection: server_connection,
+            data: data_table,
+            staff: staff,
+            credential_panel: credential_panel,
             search: PreRunning::default(),
-            staff: None,
             state: None,
             temp: None,
-            credential_panel: None,
             category: states::Category::default(),
             operation_id: None,
             require_update: false,
@@ -444,8 +448,8 @@ async fn main() {
         receiver: None,                
     };
     
-    let server_connection: SafeServerConnection = Arc::new(Mutex::new(server_connection));
-    let server_connection_clone: SafeServerConnection = server_connection.clone();
+    let safe_server_connection: SafeServerConnection = Arc::new(Mutex::new(server_connection));
+    let server_connection_clone: SafeServerConnection = safe_server_connection.clone();
     
     let data_table: SafeDataTable = Arc::new(Mutex::new(None));
     let data_table_clone: SafeDataTable = data_table.clone();
@@ -460,15 +464,16 @@ async fn main() {
         async_updater(timer).await;
         websocket(outbox_clone, mailbox_clone, server_connection_clone, data_table_clone, staff_clone, credential_panel_clone).await;
     });
-    run_egui_app(shared_value, outbox);
+    run_egui_app(shared_value, outbox, safe_server_connection, data_table, staff, credential_panel);
 }
 
-fn run_egui_app(shared_value: Arc<Mutex<i32>>, outbox: Arc<Mutex<Vec<WsMessage>>>) -> Result<(), eframe::Error> {
+fn run_egui_app(shared_value: Arc<Mutex<i32>>, outbox: SafeOutbox, server_connection: SafeServerConnection, data_table: SafeDataTable, 
+    staff: SafeStaff, credential_panel: SafeCredentialPanel) -> Result<(), eframe::Error> {
     let native_options = eframe::NativeOptions::default();
 
 
     eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
-        let app = OperationApp::new(cc, shared_value, outbox);
+        let app = OperationApp::new(cc, shared_value, outbox, server_connection, staff, data_table, credential_panel);
         Ok(Box::new(app))
     }))
 }
