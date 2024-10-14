@@ -1,3 +1,5 @@
+use std::{borrow::BorrowMut, ops::DerefMut};
+
 use crate::{database::table::{self, data::{self, TableData}, public::{ActionLog, Operation}}, OperationApp};
 
 use super::{receive::{ReceiveMessage, TableTarget}, types};
@@ -29,15 +31,18 @@ impl Update for OperationApp {
         if let TableTarget::ActionLog = message.table_name {
             match serde_json::from_str::<ActionLog>(&message.data) {
                 Ok(action_log_data) => {
-                    if let Some(data) = &self.data {
-
-                        {
-                            let mut action_log: std::sync::RwLockWriteGuard<'_, Vec<ActionLog>> = data.action_log.write().unwrap();
-                            action_log.push(action_log_data.clone());
+                    if let Ok(mut data) = self.data.lock() {
+                        let data = data.deref_mut();
+                        if let Some(data) = data {
+    
+                            {
+                                let mut action_log = data.action_log.write().unwrap();
+                                action_log.push(action_log_data.clone());
+                            }
+                            
+                            table(data, &action_log_data);
+                            
                         }
-                        
-                        table(data, &action_log_data);
-                        
                     }
                 },
                 Err(_) => {

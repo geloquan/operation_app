@@ -44,51 +44,60 @@ pub fn login(ctx: &egui::Context, credential_panel: &SafeCredentialPanel, outbox
             };
             ui.horizontal(|ui| {
                 ui.label("email ");
-                if let Ok(credential_panel) = credential_panel.lock() {
+                if let Ok(mut credential_panel) = credential_panel.lock() {
                     let credential_panel = credential_panel.deref_mut();
                     if let Some(credential_panel) = credential_panel {
                         design::input(ui, &mut credential_panel.field.email, color, design::Category::Frame, "email");
+                    } else {
+                        println!("credential panel NONE");
+
                     }
+                } else {
+                    println!("credential panel POISONED?");
+                    
                 }
             });
             ui.horizontal(|ui| {
                 ui.label("password ");
-                if let Ok(credential_panel) = credential_panel.lock() {
+                if let Ok(mut credential_panel) = credential_panel.lock() {
                     let credential_panel = credential_panel.deref_mut();
                     if let Some(credential_panel) = credential_panel {
                         design::input(ui, &mut credential_panel.field.password, color, design::Category::Frame, "password");
+                    } else {
+                        println!("credential panel NONE");
+
                     }
+                } else {
+                    println!("credential panel POISONED?");
+
                 }
             });
             if ui.button("login").clicked() {
-                if let Ok(staff) = self.staff.lock() {
-                    let staff = *staff;
-                if let (Ok(credential_panel), Ok(staff)) = (credential_panel.lock(), staff.lock()) {
+                if let (Ok(mut credential_panel), Ok(staff)) = (credential_panel.lock(), staff.lock()) {
                     let credential_panel = credential_panel.deref_mut();
-                    let staff = *staff;
+                    let staff = staff.clone();
                     if let Some(credential_panel) = credential_panel {
                         credential_panel.state = design::State::Waiting;
                         let request_json = serde_json::to_string(&SendMessage {
                             level: "Operation".to_string(),
                             method: "Authenticate".to_string(),
                             data: Some(serde_json::to_value(&credential_panel.field).unwrap()),
-                            staff_credential: staff.clone(),
+                            staff_credential: staff.to_owned(),
                             action: None
                         }).unwrap();
+
+                        match outbox.lock() {
+                            Ok(mut outbox) => {
+                                outbox.push(ewebsock::WsMessage::Text(request_json.to_string()));
+                            },
+                            Err(_) => todo!(),
+                        }
+                        
+                        credential_panel.field.password = "".to_string();
+                        credential_panel.field.email = "".to_string();
                     }
                 }
 
-                match outbox.lock() {
-                    Ok(mut outbox) => {
-                        outbox.push(ewebsock::WsMessage::Text(request_json.to_string()));
-                    },
-                    Err(_) => todo!(),
-                }
-                
-                credential_panel.field.password = "".to_string();
-                credential_panel.field.email = "".to_string();
-                
             }
-        }
-    });
+        });
 }

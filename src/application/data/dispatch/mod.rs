@@ -16,15 +16,17 @@ pub trait Dispatch {
 impl Dispatch for OperationApp {
     fn action(&mut self, action: action::Actions) {
         if let action::Actions::OperationToolOnSiteToggle(operation_tool_on_site_toggle) = &action {
-            let request_json = serde_json::to_string(&SendMessage {
-                level: "Operation".to_string(),
-                method: "Update".to_string(),
-                data: None,
-                staff_credential: self.staff.clone(),
-                action: Some(action)
-            }).unwrap();
-
-            self.sender.send(ewebsock::WsMessage::Text(request_json));
+            if let (Ok(staff), Ok(outbox)) = (self.staff.clone().lock().as_deref(), self.outbox.lock().as_deref_mut()) {
+                let request_json = serde_json::to_string(&SendMessage {
+                    level: "Operation".to_string(),
+                    method: "Update".to_string(),
+                    data: None,
+                    staff_credential: staff.clone(),
+                    action: Some(action)
+                }).unwrap();
+    
+                outbox.push(ewebsock::WsMessage::Text(request_json));
+            }
         }
         //match table_taget_name {
         //    TableTarget::All => todo!(),

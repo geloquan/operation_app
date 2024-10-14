@@ -52,7 +52,7 @@ type SafeServerConnection = Arc<Mutex<ServerConnection>>;
     
 type SafeDataTable = Arc<Mutex<Option<TableData>>>;
 type SafeStaff = Arc<Mutex<Option<StaffCredential>>>;
-type SafeCredentialPanel = Arc<Mutex<Option<states::Login>>>;
+type SafeCredentialPanel = Arc<Mutex<states::Login>>;
 
 #[derive(Deserialize, Debug, Serialize)]
 struct SendMessage {
@@ -143,29 +143,36 @@ impl App for OperationApp {
         if let Some(id) = self.operation_id {
             self.select_operation(&id);
         }
-        if let Ok(staff) = self.staff.lock() {
-            let staff = *staff;
+
+        let staff: Option<StaffCredential> = if let Ok(staff_guard) = self.staff.lock() {
+            let staff = staff_guard.clone();
             if staff.is_none() {
                 app_component::login(&ctx, &mut self.credential_panel, &self.outbox, &self.staff);
             }
-        }
-        if self.staff.is_some() {
+            staff
+        } else {
+            None
+        };
+        
+        if staff.is_some() {
             let left_panel_rect: Pos2;
             egui::TopBottomPanel::top("top").show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    if let Some(staff_credential) = self.staff.clone() {
-                        ui.horizontal(|ui| {
-                            ui.label("name");
-                            ui.label(staff_credential.full_name.clone());
-                        });
-                        
-                        ui.horizontal(|ui| {
-                            ui.label("email");
-                            ui.label(staff_credential.email.clone());
-                        });
-                        if ui.button("logout").clicked() {
-                            self.credential_panel.state = design::State::Default;
-                            self.staff = None;
+                    if let (Ok(staff), Ok(credential_panel)) = (self.staff.lock().as_deref_mut(), self.credential_panel.lock().as_deref_mut()) {
+                        if let (Some(staff_credential), credential_panel) = (staff.clone(), credential_panel) {
+                            ui.horizontal(|ui| {
+                                ui.label("name");
+                                ui.label(staff_credential.full_name.clone());
+                            });
+                            
+                            ui.horizontal(|ui| {
+                                ui.label("email");
+                                ui.label(staff_credential.email.clone());
+                            });
+                            if ui.button("logout").clicked() {
+                                credential_panel.state = design::State::Default;
+                                *staff = None;
+                            }
                         }
                     }
                     let current_time = Local::now(); 
@@ -268,23 +275,23 @@ impl App for OperationApp {
                 });
             });
             egui::CentralPanel::default().show(ctx, |ui| {
-                if self.staff.is_some() {
-                    ui.add_space(50.0);
-                    ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-                        if self.get_selected_operation().is_none() {
-                            ui.label("🔎 SEARCH OPERATION");
-                            if ui.text_edit_singleline(&mut self.search.search_operation).changed() || self.require_update == true {
-                                &self.filter_operation();
+                ui.add_space(50.0);
+                ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                    if self.get_selected_operation().is_none() {
+                        ui.label("🔎 SEARCH OPERATION");
+                        if ui.text_edit_singleline(&mut self.search.search_operation).changed() || self.require_update == true {
+                            &self.filter_operation();
 
-                                self.require_update = false;
-                            }
-            
-                            ui.separator();
-            
-                            if self.search.search_operation_result.is_empty() && self.search.search_operation != "" {
-                                ui.label("💤 No results found");
-                            } else {
-                                if let Some(data) = &mut self.data { 
+                            self.require_update = false;
+                        }
+        
+                        ui.separator();
+        
+                        if self.search.search_operation_result.is_empty() && self.search.search_operation != "" {
+                            ui.label("💤 No results found");
+                        } else {
+                            if let Ok(data) = self.data.clone().lock().as_deref() {
+                                if let Some(data) = data { 
                                     if !self.search.search_operation_result.is_empty() {
                                         ui.horizontal_centered(|ui| {
                                             self.build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())));
@@ -292,25 +299,26 @@ impl App for OperationApp {
                                     }
                                 }
                             }
-                        } else {
-                            if let (Some(selected_menu), Some(operation_id)) = (&self.selected_menu, self.operation_id) {
-                                match selected_menu {
-                                    application::menu::selected::Menu::PreOperativeDefault => {
-                                        println!("select options below");
-                                    },
-                                    application::menu::selected::Menu::PreOperativeToolReady => {
-                                        if let Some(preoperative_tool_ready) = self.get_preoperative_tool_ready() {
-                                            if let Some(data) = &mut self.data { 
+                        }
+                    } else {
+                        if let (Some(selected_menu), Some(operation_id)) = (&self.selected_menu, self.operation_id) {
+                            match selected_menu {
+                                application::menu::selected::Menu::PreOperativeDefault => {
+                                    println!("select options below");
+                                },
+                                application::menu::selected::Menu::PreOperativeToolReady => {
+                                    if let Some(preoperative_tool_ready) = self.get_preoperative_tool_ready() {
+                                        if let Ok(data) = self.data.clone().lock().as_deref() {
+                                            if let Some(data) = data { 
                                                 self.build_table(ui, database::table::window::WindowTable::PreOperativeToolReady(Some(preoperative_tool_ready.clone())));
                                             }
                                         }
-                                    },
-                                }
+                                    }
+                                },
                             }
                         }
-                    });
-                } 
-                
+                    }
+                });
             });
             egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
                 Frame::none()
@@ -461,7 +469,6 @@ async fn main() {
     let credential_panel_clone: SafeCredentialPanel = credential_panel.clone();
 
     tokio::spawn(async move {
-        async_updater(timer).await;
         websocket(outbox_clone, mailbox_clone, server_connection_clone, data_table_clone, staff_clone, credential_panel_clone).await;
     });
     run_egui_app(shared_value, outbox, safe_server_connection, data_table, staff, credential_panel);
@@ -485,7 +492,6 @@ async fn async_updater(value: Arc<Mutex<i32>>) {
 
         let mut val = value.lock().unwrap(); 
         *val += 1;
-        println!("Value updated async: {}", *val);
     }
 }
 
@@ -497,6 +503,7 @@ async fn websocket(outbox: SafeOutbox, mailbox: SafeMailbox, server_connected: S
                 if let (Some(sender), Some(receiver)) = (connection.sender.as_mut(), connection.receiver.as_mut()) {
                     if let Ok(outbox) = outbox.lock() {
                         for message in outbox.deref() {
+                            println!("sending message...");
                             sender.send(message.to_owned());
                         }
                         if let Some(msg) = receiver.try_recv() {
@@ -592,6 +599,7 @@ async fn websocket(outbox: SafeOutbox, mailbox: SafeMailbox, server_connected: S
             } else {
                 match ewebsock::connect("ws://localhost:8080", ewebsock::Options::default()) {
                     Ok(ws_sr) => {
+                        println!("connected");
                         connection.sender = Some(ws_sr.0);
                         connection.receiver = Some(ws_sr.1);
                         connection.connected = true;
