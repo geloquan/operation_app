@@ -75,17 +75,11 @@ const SIDEPANELSIZE: f32 = 250.0;
 
 pub struct OperationApp {
     data: Option<TableData>,
-    rx: tokio::sync::mpsc::Receiver<String>,
-    tx: tokio::sync::mpsc::Sender<String>,
     sender: WsSender,
     receiver: WsReceiver,
     search: PreRunning,
     staff: Option<StaffCredential>,
-    //central_window: OperationWindow,
-    state: Option<RunningApp>,
-    temp: Option<Temporary>,
     credential_panel: states::Login,
-    category: states::Category,
     operation_id: Option<i32>,
     require_update: bool,
     selected_menu: Option<application::menu::selected::Menu>,
@@ -94,21 +88,16 @@ pub struct OperationApp {
 
 impl OperationApp {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let (tx, rx) = tokio::sync::mpsc::channel(32);
         
         let options = ewebsock::Options::default();
         let (sender, receiver) = ewebsock::connect("ws://192.168.1.7:8080", options).unwrap();
 
         OperationApp {
             data: None,
-            rx,
-            tx,
             sender,
             receiver,
             search: PreRunning::default(),
             staff: None,
-            state: None,
-            temp: None,
             credential_panel: states::Login {
                 field: field::Login {
                     email: "".to_string(),
@@ -117,7 +106,6 @@ impl OperationApp {
                 },
                 state: design::State::Default,
             },
-            category: states::Category::default(),
             operation_id: None,
             require_update: false,
             selected_menu: None,
@@ -155,6 +143,8 @@ impl App for OperationApp {
                         if ui.button("logout").clicked() {
                             self.credential_panel.state = design::State::Default;
                             self.staff = None;
+                            self.operation_id = None;
+                            self.data = None;
                         }
                     }
                     let current_time = Local::now(); 
@@ -417,6 +407,8 @@ impl App for OperationApp {
                 });
             }
         }
+
+        ctx.request_repaint();
     }
 }
 
