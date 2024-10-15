@@ -8,7 +8,7 @@ impl OperationApp {
         self.operation_id = Some(*id);
     }
     pub fn get_selected_operation(&mut self) -> Option<PreOperativeDefault> {
-        if let Ok(mut data) = self.data.lock() {
+        if let Ok(mut data) = self.data.write() {
             let data = data.deref_mut();
             if let Some(data) = data {
                 
@@ -94,7 +94,7 @@ impl OperationApp {
         println!("filter_operation()");
         if &self.search.search_operation == "" {
             self.search.search_operation_result.clear();
-        } else if let Ok(mut data) = self.data.lock() {
+        } else if let Ok(mut data) = self.data.write() {
             let data = data.deref_mut();
             if let Some(data) = data {
                 let operation = data.operation.read().unwrap();
@@ -150,7 +150,7 @@ impl OperationApp {
     }
 
     pub fn get_preoperative_tool_ready(&mut self) -> Option<Vec<PreOperativeToolReady>> {
-        if let (Ok(mut data), Some(operation_id)) = (self.data.lock(), self.operation_id) {
+        if let (Ok(mut data), Some(operation_id)) = (self.data.write(), self.operation_id) {
             let data = data.deref_mut();
             if let Some(data) = data {
                 let operation_tools = data.operation_tool.read().unwrap();
@@ -197,7 +197,7 @@ impl OperationApp {
     }
 
     pub fn get_action_log_operation(&mut self) -> Option<Vec<ActionLogProperty>> {
-        if let Ok(mut data) = self.data.lock() {
+        if let Ok(mut data) = self.data.write() {
             let data = data.deref_mut();
             if let Some(data) = data {
                 let staff = data.staff.read().unwrap();

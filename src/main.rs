@@ -2,7 +2,7 @@ mod database;
 mod error;
 mod action;
 
-use std::{ops::{Deref, DerefMut}, sync::{Arc, Mutex}, time::Duration};
+use std::{ops::{Deref, DerefMut}, sync::{Arc, RwLock}, time::Duration};
 
 use application::menu::selected;
 use data::dispatch::server::Server;
@@ -15,7 +15,7 @@ use application::{authenticate::StaffCredential, field};
 use application::{*, states, RunningApp, component as app_component};
 
 pub mod ws;
-use egui::{frame, mutex, CursorIcon, Id, LayerId, Margin, Order, Rounding, ScrollArea, WidgetText};
+use egui::{frame, CursorIcon, Id, LayerId, Margin, Order, Rounding, ScrollArea, WidgetText};
 use egui::text::Fonts;
 use egui::{menu, epaint, Align, Align2, Area, Color32, Direction, FontId, Frame, Layout, Pos2, RichText, Stroke, TextEdit, Window};
 use futures::channel::mpsc::{Receiver, Sender};
@@ -41,18 +41,13 @@ use ewebsock::{self, WsMessage, WsReceiver, WsSender};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, to_string};
 
-type SafeOutbox = Arc<Mutex<Vec<WsMessage>>>;
-type SafeMailbox = Arc<Mutex<Vec<WsMessage>>>;
-struct ServerConnection {
-    sender: Option<WsSender>,
-    receiver: Option<WsReceiver>,
-    connected: bool,
-}
-type SafeServerConnection = Arc<Mutex<ServerConnection>>;
+type SafeOutbox = Arc<RwLock<Vec<WsMessage>>>;
+type SafeMailbox = Arc<RwLock<Vec<WsMessage>>>;
+type SafeServerConnection = Arc<RwLock<bool>>;
     
-type SafeDataTable = Arc<Mutex<Option<TableData>>>;
-type SafeStaff = Arc<Mutex<Option<StaffCredential>>>;
-type SafeCredentialPanel = Arc<Mutex<states::Login>>;
+type SafeDataTable = Arc<RwLock<Option<TableData>>>;
+type SafeStaff = Arc<RwLock<Option<StaffCredential>>>;
+type SafeCredentialPanel = Arc<RwLock<states::Login>>;
 
 #[derive(Deserialize, Debug, Serialize)]
 struct SendMessage {
@@ -91,8 +86,8 @@ const DEBUGCOLOR: Color32 = Color32::GOLD;
 const SIDEPANELSIZE: f32 = 250.0;
 
 pub struct OperationApp {
-    outbox: Arc<Mutex<Vec<WsMessage>>>,
-    server_connection: SafeServerConnection,
+    outbox: Arc<RwLock<Vec<WsMessage>>>,
+    server_connected: SafeServerConnection,
     
     data: SafeDataTable,
     staff: SafeStaff,
@@ -106,12 +101,12 @@ pub struct OperationApp {
     require_update: bool,
     selected_menu: Option<application::menu::selected::Menu>,
     selected_action: Option<application::menu::selected::Action>,
-    shared_value: Arc<Mutex<i32>>
+    shared_value: Arc<RwLock<i32>>
 }
 
 impl OperationApp {
-    fn new(cc: &eframe::CreationContext<'_>, shared_value: Arc<Mutex<i32>>, outbox: SafeOutbox,
-    server_connection: SafeServerConnection,
+    fn new(cc: &eframe::CreationContext<'_>, shared_value: Arc<RwLock<i32>>, outbox: SafeOutbox,
+    server_connected: SafeServerConnection,
     staff: SafeStaff,
     data_table: SafeDataTable,
     credential_panel: SafeCredentialPanel
@@ -119,7 +114,7 @@ impl OperationApp {
 
         OperationApp {
             outbox: outbox,
-            server_connection: server_connection,
+            server_connected: server_connected,
             data: data_table,
             staff: staff,
             credential_panel: credential_panel,
@@ -144,13 +139,14 @@ impl App for OperationApp {
             self.select_operation(&id);
         }
 
-        let staff: Option<StaffCredential> = if let Ok(staff_guard) = self.staff.lock() {
+        let staff: Option<StaffCredential> = if let Ok(staff_guard) = self.staff.clone().try_read() {
             let staff = staff_guard.clone();
             if staff.is_none() {
                 app_component::login(&ctx, &mut self.credential_panel, &self.outbox, &self.staff);
             }
             staff
         } else {
+            println!("staff lock issue");
             None
         };
         
@@ -158,25 +154,34 @@ impl App for OperationApp {
             let left_panel_rect: Pos2;
             egui::TopBottomPanel::top("top").show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    if let (Ok(staff), Ok(credential_panel)) = (self.staff.lock().as_deref_mut(), self.credential_panel.lock().as_deref_mut()) {
-                        if let (Some(staff_credential), credential_panel) = (staff.clone(), credential_panel) {
+                    if let Ok(staff) = self.staff.read() {
+                        let staff = staff.deref();
+                        if let Some(staff) = staff {
                             ui.horizontal(|ui| {
                                 ui.label("name");
-                                ui.label(staff_credential.full_name.clone());
+                                ui.label(staff.full_name.clone());
                             });
                             
                             ui.horizontal(|ui| {
                                 ui.label("email");
-                                ui.label(staff_credential.email.clone());
+                                ui.label(staff.email.clone());
                             });
-                            if ui.button("logout").clicked() {
-                                credential_panel.state = design::State::Default;
-                                *staff = None;
+                        }
+                    }
+                    if ui.button("logout").clicked() {
+                        if let (Ok(mut staff), Ok(mut credential_panel)) = (self.staff.write(), self.credential_panel.write()) {
+                            credential_panel.state = design::State::Default;
+                            
+                            if let Some(staff) = staff.deref_mut() {
+                                staff.email = "".to_owned();
+                                staff.full_name = "".to_owned();
+                                staff.id = 0;
+                                staff.session_token = "".to_owned();
                             }
                         }
                     }
                     let current_time = Local::now(); 
-                    let formatted_time = format!("Current Time: {} : {}", current_time.format("%Y-%m-%d %H:%M:%S").to_string(), self.shared_value.lock().unwrap());
+                    let formatted_time = format!("Current Time: {} : {}", current_time.format("%Y-%m-%d %H:%M:%S").to_string(), self.shared_value.read().unwrap());
                     let font_id: FontId = FontId::default(); 
 
                     let text_size = ui.fonts(|font| {
@@ -290,8 +295,8 @@ impl App for OperationApp {
                         if self.search.search_operation_result.is_empty() && self.search.search_operation != "" {
                             ui.label("💤 No results found");
                         } else {
-                            if let Ok(data) = self.data.clone().lock().as_deref() {
-                                if let Some(data) = data { 
+                            if let Ok(data) = self.data.clone().read() {
+                                if let Some(_) = data.deref() { 
                                     if !self.search.search_operation_result.is_empty() {
                                         ui.horizontal_centered(|ui| {
                                             self.build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())));
@@ -308,8 +313,8 @@ impl App for OperationApp {
                                 },
                                 application::menu::selected::Menu::PreOperativeToolReady => {
                                     if let Some(preoperative_tool_ready) = self.get_preoperative_tool_ready() {
-                                        if let Ok(data) = self.data.clone().lock().as_deref() {
-                                            if let Some(data) = data { 
+                                        if let Ok(data) = self.data.clone().read().as_deref() {
+                                            if let Some(_) = data { 
                                                 self.build_table(ui, database::table::window::WindowTable::PreOperativeToolReady(Some(preoperative_tool_ready.clone())));
                                             }
                                         }
@@ -441,168 +446,150 @@ impl App for OperationApp {
 
 #[tokio::main]
 async fn main() {
-    let shared_value = Arc::new(Mutex::new(0));
+    let shared_value = Arc::new(RwLock::new(0));
     let timer = shared_value.clone(); 
     
-    let outbox: SafeOutbox = Arc::new(Mutex::new(Vec::new()));
+    let outbox: SafeOutbox = Arc::new(RwLock::new(Vec::new()));
     let outbox_clone: SafeOutbox = outbox.clone();
         
-    let mailbox: SafeMailbox = Arc::new(Mutex::new(Vec::new()));
+    let mailbox: SafeMailbox = Arc::new(RwLock::new(Vec::new()));
     let mailbox_clone: SafeMailbox = outbox.clone();
     
-    let server_connection = ServerConnection {
-        connected: false,
-        sender: None,
-        receiver: None,                
-    };
     
-    let safe_server_connection: SafeServerConnection = Arc::new(Mutex::new(server_connection));
-    let server_connection_clone: SafeServerConnection = safe_server_connection.clone();
-    
-    let data_table: SafeDataTable = Arc::new(Mutex::new(None));
+    let data_table: SafeDataTable = Arc::new(RwLock::new(None));
     let data_table_clone: SafeDataTable = data_table.clone();
 
-    let staff: SafeStaff = Arc::new(Mutex::new(None));
+    let staff: SafeStaff = Arc::new(RwLock::new(None));
     let staff_clone: SafeStaff = staff.clone();
 
-    let credential_panel: SafeCredentialPanel = Arc::new(Mutex::new(None));
-    let credential_panel_clone: SafeCredentialPanel = credential_panel.clone();
+    let login_state = states::Login { 
+        field: field::Login {
+            email: "".to_string(),
+            password: "".to_string(),
+            session_token: "".to_string()
+        }, 
+        state: design::State::Default
+    };
 
+    let safe_credential_panel: SafeCredentialPanel = Arc::new(RwLock::new(login_state));
+    let credential_panel_clone: SafeCredentialPanel = safe_credential_panel.clone();
+    
+    let safe_server_connected: SafeServerConnection = Arc::new(RwLock::new(false));
+    let server_connected_clone: SafeServerConnection = safe_server_connected.clone();
     tokio::spawn(async move {
-        websocket(outbox_clone, mailbox_clone, server_connection_clone, data_table_clone, staff_clone, credential_panel_clone).await;
+        websocket(outbox_clone, mailbox_clone, server_connected_clone, data_table_clone, staff_clone, credential_panel_clone).await;
     });
-    run_egui_app(shared_value, outbox, safe_server_connection, data_table, staff, credential_panel);
+    run_egui_app(shared_value, outbox, safe_server_connected, data_table, staff, safe_credential_panel);
 }
 
-fn run_egui_app(shared_value: Arc<Mutex<i32>>, outbox: SafeOutbox, server_connection: SafeServerConnection, data_table: SafeDataTable, 
+fn run_egui_app(shared_value: Arc<RwLock<i32>>, outbox: SafeOutbox, server_connected: SafeServerConnection, data_table: SafeDataTable, 
     staff: SafeStaff, credential_panel: SafeCredentialPanel) -> Result<(), eframe::Error> {
     let native_options = eframe::NativeOptions::default();
 
 
     eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
-        let app = OperationApp::new(cc, shared_value, outbox, server_connection, staff, data_table, credential_panel);
+        let app = OperationApp::new(cc, shared_value, outbox, server_connected, staff, data_table, credential_panel);
         Ok(Box::new(app))
     }))
 }
 
-
-async fn async_updater(value: Arc<Mutex<i32>>) {
-    loop {
-        tokio::time::sleep(Duration::from_secs(1)).await;
-
-        let mut val = value.lock().unwrap(); 
-        *val += 1;
-    }
-}
-
 async fn websocket(outbox: SafeOutbox, mailbox: SafeMailbox, server_connected: SafeServerConnection, data_table: SafeDataTable, staff: SafeStaff, credential_panel: SafeCredentialPanel) {
+    let (mut s, mut r) = ewebsock::connect("ws://localhost:8080", ewebsock::Options::default()).unwrap();
     loop {
-        if let Ok(mut server_connection) = server_connected.lock() {
-            let connection = server_connection.deref_mut();
-            if connection.connected {
-                if let (Some(sender), Some(receiver)) = (connection.sender.as_mut(), connection.receiver.as_mut()) {
-                    if let Ok(outbox) = outbox.lock() {
-                        for message in outbox.deref() {
-                            println!("sending message...");
-                            sender.send(message.to_owned());
-                        }
-                        if let Some(msg) = receiver.try_recv() {
-                            match msg {
-                                ewebsock::WsEvent::Opened => {
-                                },
-                                ewebsock::WsEvent::Message(text) => {
-                                    match text {
-                                        ewebsock::WsMessage::Binary(vec) => todo!(),
-                                        ewebsock::WsMessage::Text(text) => {
-                                            match serde_json::from_str::<EncryptedText>(&text) {
-                                                Ok(encrypted_text) => {
-                                                    if let Ok(key) = &generate_fixed_key() {
-                                                        if let Ok(decrypted_text) = decrypt_message(key, &encrypted_text.nonce, &encrypted_text.cipher_text) {
-                                                            match serde_json::from_str::<ReceiveMessage>(&decrypted_text) {
-                                                                Ok(message) => {
-                                                                    match message.operation {
-                                                                        Operation::Initialize => {
-                                                                            if let Ok(mut data_table) = data_table.lock() {
-                                                                                let data = data_table.deref_mut();
-                                                                                if let Some(data) = data {
-                                                                                    data.initialize(message.data);
-                                                                                } else {
-                                                                                    let mut new_table_data = TableData::new();
-                                                                                    new_table_data.initialize(message.data);
-                                                                                    *data = Some(new_table_data);
-                                                                                }
-                                                                            }
-                                                                        },
-                                                                        Operation::Update => {
-                                                                            println!("update: {:?}", message);
-                                                                            //self.update(message);
-                                                                        },
-                                                                        Operation::AuthHandshake => {
-                                                                            println!("statuscode {:?}", message.status_code);
-                                                                            if let Ok(mut staff) = staff.lock() {
-                                                                                match serde_json::from_str::<StaffCredential>(&message.data) {
-                                                                                    Ok(staff_credential) => {
-                                                                                        *staff = Some(staff_credential.to_owned());
-                                                                                    }
-                                                                                    Err(err) => {
-                                                                                        eprintln!("Failed to deserialize StaffCredential: {}", err);
-                                                                            
-                                                                                        *staff = None;
-                                                                                    }
-                                                                                }
-                                                                            }
-                                                                            if let Ok(mut credential_panel) = credential_panel.lock() {
-                                                                                let credential_panel = credential_panel.deref_mut();
-                                                                                if let Some(credential_panel) = credential_panel {
-                                                                                    if message.status_code == "success" { 
-                                                                                        credential_panel.state = design::State::Valid;
-                                                                                    } else {
-                                                                                        credential_panel.state = design::State::Error;
-                                                                                    }
-                                                                                } else {
-                                                                                }
-                                                                            }
+        if let Ok(mut server_connected) = server_connected.write() {
+            if *server_connected {
+                if let Ok(outbox) = outbox.read() {
+                    for message in outbox.deref() {
+                        println!("sending message...");
+                        s.send(message.to_owned());
+                    }
+                } 
+                if let Some(msg) = r.try_recv() {
+                    match msg {
+                        ewebsock::WsEvent::Opened => {
+                        },
+                        ewebsock::WsEvent::Message(text) => {
+                            match text {
+                                ewebsock::WsMessage::Binary(vec) => todo!(),
+                                ewebsock::WsMessage::Text(text) => {
+                                    match serde_json::from_str::<EncryptedText>(&text) {
+                                        Ok(encrypted_text) => {
+                                            if let Ok(key) = &generate_fixed_key() {
+                                                if let Ok(decrypted_text) = decrypt_message(key, &encrypted_text.nonce, &encrypted_text.cipher_text) {
+                                                    match serde_json::from_str::<ReceiveMessage>(&decrypted_text) {
+                                                        Ok(message) => {
+                                                            match message.operation {
+                                                                Operation::Initialize => {
+                                                                    if let Ok(mut data_table) = data_table.write() {
+                                                                        let datae = data_table.as_mut();
+                                                                        if let Some(data) = datae {
+                                                                            data.initialize(message.data);
+                                                                        } else {
+                                                                            let mut new_table_data = TableData::new();
+                                                                            new_table_data.initialize(message.data);
+                                                                            *data_table = Some(new_table_data);
                                                                         }
                                                                     }
                                                                 },
-                                                                Err(_) => {
-                                                                    println!("err parsing: ReceiveMessage");
+                                                                Operation::Update => {
+                                                                    println!("update: {:?}", message);
+                                                                    //self.update(message);
                                                                 },
+                                                                Operation::AuthHandshake => {
+                                                                    println!("statuscode {:?}", message.status_code);
+                                                                    if let Ok(mut staff) = staff.write() {
+                                                                        match serde_json::from_str::<StaffCredential>(&message.data) {
+                                                                            Ok(staff_credential) => {
+                                                                                *staff = Some(staff_credential.to_owned());
+                                                                            }
+                                                                            Err(err) => {
+                                                                                eprintln!("Failed to deserialize StaffCredential: {}", err);
+                                                                    
+                                                                                *staff = None;
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    if let Ok(mut credential_panel) = credential_panel.write() {
+                                                                        if message.status_code == "success" { 
+                                                                            credential_panel.state = design::State::Valid;
+                                                                        } else {
+                                                                            credential_panel.state = design::State::Error;
+                                                                        }
+                                                                    }
+                                                                }
                                                             }
-                                                        }
+                                                        },
+                                                        Err(_) => {
+                                                            println!("err parsing: ReceiveMessage");
+                                                        },
                                                     }
-                                                },
-                                                Err(_) => {
-                                                    
-                                                },
+                                                }
                                             }
                                         },
-                                        ewebsock::WsMessage::Unknown(_) => todo!(),
-                                        ewebsock::WsMessage::Ping(vec) => todo!(),
-                                        ewebsock::WsMessage::Pong(vec) => todo!(),
+                                        Err(_) => {
+                                            
+                                        },
                                     }
                                 },
-                                ewebsock::WsEvent::Error(_) => {
-                                    
-                                },
-                                ewebsock::WsEvent::Closed => {
-                    
-                                },
+                                ewebsock::WsMessage::Unknown(_) => todo!(),
+                                ewebsock::WsMessage::Ping(vec) => todo!(),
+                                ewebsock::WsMessage::Pong(vec) => todo!(),
                             }
-                        }
-                    } else {
-                        
+                        },
+                        ewebsock::WsEvent::Error(_) => {
+                            
+                        },
+                        ewebsock::WsEvent::Closed => {
+            
+                        },
                     }
-                } else {
-                    connection.connected = false;
                 }
             } else {
                 match ewebsock::connect("ws://localhost:8080", ewebsock::Options::default()) {
                     Ok(ws_sr) => {
-                        println!("connected");
-                        connection.sender = Some(ws_sr.0);
-                        connection.receiver = Some(ws_sr.1);
-                        connection.connected = true;
+                        s = ws_sr.0;
+                        r = ws_sr.1;
+                        *server_connected = true;
                     },
                     Err(_) => {
                         println!("cannot connect to server...");

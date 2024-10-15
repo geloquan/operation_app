@@ -16,7 +16,8 @@ pub trait Dispatch {
 impl Dispatch for OperationApp {
     fn action(&mut self, action: action::Actions) {
         if let action::Actions::OperationToolOnSiteToggle(operation_tool_on_site_toggle) = &action {
-            if let (Ok(staff), Ok(outbox)) = (self.staff.clone().lock().as_deref(), self.outbox.lock().as_deref_mut()) {
+            if let (Ok(staff), Ok(mut outbox)) = (self.staff.clone().read().as_deref(), self.outbox.write()) {
+                
                 let request_json = serde_json::to_string(&SendMessage {
                     level: "Operation".to_string(),
                     method: "Update".to_string(),

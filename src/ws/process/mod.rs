@@ -1,4 +1,4 @@
-use std::{borrow::BorrowMut, ops::DerefMut};
+use std::{ops::DerefMut};
 
 use crate::{database::table::{self, data::{self, TableData}, public::{ActionLog, Operation}}, OperationApp};
 
@@ -31,9 +31,8 @@ impl Update for OperationApp {
         if let TableTarget::ActionLog = message.table_name {
             match serde_json::from_str::<ActionLog>(&message.data) {
                 Ok(action_log_data) => {
-                    if let Ok(mut data) = self.data.lock() {
-                        let data = data.deref_mut();
-                        if let Some(data) = data {
+                    if let Ok(mut data) = self.data.write() {
+                        if let Some(data) = data.deref_mut() {
     
                             {
                                 let mut action_log = data.action_log.write().unwrap();
