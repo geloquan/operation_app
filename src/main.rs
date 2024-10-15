@@ -97,7 +97,7 @@ impl OperationApp {
         let (tx, rx) = tokio::sync::mpsc::channel(32);
         
         let options = ewebsock::Options::default();
-        let (sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", options).unwrap();
+        let (sender, receiver) = ewebsock::connect("ws://192.168.1.7:8080", options).unwrap();
 
         OperationApp {
             data: None,
