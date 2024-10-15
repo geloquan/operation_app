@@ -1,4 +1,4 @@
-use egui::{epaint, Color32, Frame, Margin, Stroke, TextEdit, Ui};
+use egui::{Color32, Frame, Stroke, TextEdit, Ui};
 
 pub enum State {
     Waiting,

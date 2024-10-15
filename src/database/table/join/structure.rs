@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::database::table::{self, public::{EquipmentStatus, OperationStatus}};
+use crate::database::table::{public::{EquipmentStatus, OperationStatus}};
 
 #[derive(Deserialize, Debug, Serialize, Default, Clone)]
 pub struct OperationSelect {

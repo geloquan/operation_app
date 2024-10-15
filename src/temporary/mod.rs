@@ -1,12 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 use crate::ws::receive::TableTarget;
-
-enum CRUD {
-    CREATE,
-    UPDATE,
-    DELETE
-}
 #[derive(Deserialize, Debug, Serialize, Clone)]
 struct Row {
     id: i32,

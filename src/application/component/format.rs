@@ -1,4 +1,4 @@
-use egui::{Align2, Color32, FontId, Ui, Window};
+use egui::Ui;
 
 pub fn get_width_from_text(ui: &Ui, text: String) -> f32 {
     let text_size = ui.fonts(|fonts| fonts.font_image_size());

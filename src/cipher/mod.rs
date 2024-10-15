@@ -2,11 +2,7 @@ use aes_gcm::{aead::Aead, Aes256Gcm, Key, KeyInit, Nonce};
 use rand::Rng;
 use sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
-use std::fs::{self, File};
-use std::io::{self, BufRead, Read};
-use std::path::Path;
-
-const PASSPHRASE: &str = "yeeey";
+use std::fs::{self};
 
 pub enum Error {
     

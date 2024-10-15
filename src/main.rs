@@ -4,38 +4,30 @@ mod action;
 
 use application::menu::selected;
 use database::table::{
-    ui_builder::BuildTable, data::TableData, join::structure::OperationSelect, query::{self}, private::StaffAuthGrant
+    ui_builder::BuildTable, data::TableData, join::structure::OperationSelect
 };
 
 pub mod application;
 use application::{authenticate::StaffCredential, field};
-use application::{*, states, RunningApp, component as app_component};
+use application::{states, component as app_component};
 
 pub mod ws;
-use egui::{frame, CursorIcon, Id, LayerId, Margin, Order, Rounding, ScrollArea, WidgetText};
-use egui::text::Fonts;
-use egui::{menu, epaint, Align, Align2, Area, Color32, Direction, FontId, Frame, Layout, Pos2, RichText, Stroke, TextEdit, Window};
-use ws::receive::{
-    Handle
-};
+use egui::{Margin, Rounding, ScrollArea};
+use egui::{Color32, FontId, Frame, Pos2, RichText, TextEdit};
+use ws::receive::Handle;
 
 pub mod temporary;
-use temporary::*;
 
 pub mod cipher;
-use cipher::{decrypt_message, generate_fixed_key, EncryptedText};
 
 pub mod component;
 use component::design;
 
-use application::component::format::get_width_from_text;
 
-use chrono::{Local};
+use chrono::Local;
 use eframe::{egui, App};
-use egui_extras::{TableBuilder, Column};
 use ewebsock::{self, WsReceiver, WsSender};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, to_string};
 
 #[derive(Deserialize, Debug, Serialize)]
 struct SendMessage {
@@ -70,6 +62,7 @@ struct PreRunning {
 } 
 
 const DARKMODE_RED_HIGHLIGHT: Color32 = Color32::from_rgb(45, 8, 10);
+#[allow(dead_code)]
 const DEBUGCOLOR: Color32 = Color32::GOLD;
 const SIDEPANELSIZE: f32 = 250.0;
 
@@ -87,7 +80,7 @@ pub struct OperationApp {
 }
 
 impl OperationApp {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    fn new(_: &eframe::CreationContext<'_>) -> Self {
         
         let options = ewebsock::Options::default();
         let (sender, receiver) = ewebsock::connect("ws://192.168.1.7:8080", options).unwrap();
@@ -127,7 +120,6 @@ impl App for OperationApp {
         } 
 
         if self.staff.is_some() {
-            let left_panel_rect: Pos2;
             egui::TopBottomPanel::top("top").show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     if let Some(staff_credential) = self.staff.clone() {
@@ -197,10 +189,9 @@ impl App for OperationApp {
                     ui.heading("system by geloquan ");
 
                     ui.separator();
-                    
                 });
             });
-            egui::SidePanel::right("right").show(ctx, |ui| {
+            egui::SidePanel::right("right").show(ctx, |ui: &mut egui::Ui| {
                 ui.set_max_width(SIDEPANELSIZE);
                 
                 Frame::none()
@@ -253,7 +244,7 @@ impl App for OperationApp {
                         if self.get_selected_operation().is_none() {
                             ui.label("🔎 SEARCH OPERATION");
                             if ui.text_edit_singleline(&mut self.search.search_operation).changed() || self.require_update == true {
-                                &self.filter_operation();
+                                let _ = &self.filter_operation();
 
                                 self.require_update = false;
                             }
@@ -262,34 +253,32 @@ impl App for OperationApp {
             
                             if self.search.search_operation_result.is_empty() && self.search.search_operation != "" {
                                 ui.label("💤 No results found");
-                            } else {
-                                if let Some(data) = &mut self.data { 
-                                    if !self.search.search_operation_result.is_empty() {
-                                        ui.horizontal_centered(|ui| {
-                                            self.build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())));
-                                        });
-                                    }
+                            } else if self.data.is_some() {
+                                if !self.search.search_operation_result.is_empty() {
+                                    ui.horizontal_centered(|ui| {
+                                        self.build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())));
+                                    });
                                 }
                             }
-                        } else {
-                            if let (Some(selected_menu), Some(operation_id)) = (&self.selected_menu, self.operation_id) {
-                                match selected_menu {
-                                    application::menu::selected::Menu::PreOperativeDefault => {
-                                        println!("select options below");
-                                    },
-                                    application::menu::selected::Menu::PreOperativeToolReady => {
-                                        if let Some(preoperative_tool_ready) = self.get_preoperative_tool_ready() {
-                                            if let Some(data) = &mut self.data { 
-                                                self.build_table(ui, database::table::window::WindowTable::PreOperativeToolReady(Some(preoperative_tool_ready.clone())));
-                                            }
+                        } else if let (Some(selected_menu), Some(_)) = (&self.selected_menu, self.operation_id) {
+                            match selected_menu {
+                                application::menu::selected::Menu::PreOperativeToolReady => {
+                                    if let Some(preoperative_tool_ready) = self.get_preoperative_tool_ready() {
+                                        if let Some(data) = &mut self.data { 
+                                            self.build_table(ui, database::table::window::WindowTable::PreOperativeToolReady(Some(preoperative_tool_ready.clone())));
                                         }
-                                    },
-                                }
+                                    }
+                                },
                             }
+                        } else if let (Some(selected_action), Some(_)) = (&self.selected_action, self.operation_id) {
+                            match selected_action {
+                                selected::Action::AddRequirement => {
+                                    
+                                },
+                            }                                
                         }
                     });
                 } 
-                
             });
             egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
                 Frame::none()
@@ -299,12 +288,11 @@ impl App for OperationApp {
                     });
                 if let Some(operation) = self.get_selected_operation() {
                     ui.horizontal_centered(|ui| {
-                        let mut staff_clr: Color32 = Color32::default();
+                        let staff_clr: Color32 = Color32::default();
                         let mut tool_clr: Color32 = Color32::default();
-                        let mut ascend_clr: Color32 = Color32::default();
+                        let ascend_clr: Color32 = Color32::default();
                         if let Some(selected_menu) = &self.selected_menu {
                             match selected_menu {
-                                selected::Menu::PreOperativeDefault => {Color32::default();},
                                 selected::Menu::PreOperativeToolReady => {tool_clr = DARKMODE_RED_HIGHLIGHT},
                             }
                         }
@@ -379,7 +367,6 @@ impl App for OperationApp {
                         ui.heading("actions")
                     });
                     match menu {
-                        selected::Menu::PreOperativeDefault => todo!(),
                         selected::Menu::PreOperativeToolReady => {
                             Frame::none()
                             .rounding(Rounding::same(20.0))
@@ -391,9 +378,9 @@ impl App for OperationApp {
                                     tool_response.push(ui.label(RichText::new("⊞").size(40.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
                                     tool_response.push(ui.heading(RichText::new("add new requirement").size(20.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
                                 }).response;
+
                                 let tool = tool.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
                                 tool_response.push(tool);
-            
                                 tool_response.iter().for_each(|v: &egui::Response| {
                                     if v.clicked() && self.selected_action != Some(application::menu::selected::Action::AddRequirement) {
                                         self.selected_action = Some(application::menu::selected::Action::AddRequirement);

@@ -1,5 +1,5 @@
-use egui::{Align2, Color32, Ui, Window};
-use ewebsock::{WsMessage, WsSender};
+use egui::{Align2, Color32, Window};
+use ewebsock::WsSender;
 
 use crate::{component::design, SendMessage};
 

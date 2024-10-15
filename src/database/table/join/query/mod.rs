@@ -1,5 +1,5 @@
 use super::structure::{ActionLogProperty, OperationSelect, PreOperativeDefault, PreOperativeToolReady};
-use crate::{application, database::table::{data, public::{ActionLog, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
+use crate::{database::table::{public::{ActionLog, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
 
 impl OperationApp {
     pub fn select_operation(&mut self, id: &i32) {

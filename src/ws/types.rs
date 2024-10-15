@@ -1,7 +1,6 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::database;
 
 #[derive(Deserialize, Serialize)]
 pub struct Update {

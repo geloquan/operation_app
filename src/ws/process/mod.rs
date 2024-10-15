@@ -1,4 +1,4 @@
-use crate::{database::table::{self, data, public::{ActionLog, Operation}}, OperationApp};
+use crate::{database::table::{public::{ActionLog, Operation}}, OperationApp};
 
 use super::{receive::{ReceiveMessage, TableTarget}, types};
 

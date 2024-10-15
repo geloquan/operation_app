@@ -1,13 +1,10 @@
-use egui::{Button, Color32, Frame, Label, Margin, RichText, Sense, Ui};
+use egui::{Label, Sense, Ui};
 use egui_extras::{TableBuilder, Column};
 
 use super::private::OperationToolOnSiteToggle;
-use super::public::OperationTool;
-use super::{data::TableData, window::WindowTable};
+use super::window::WindowTable;
 
 use crate::action;
-use crate::ws::receive::TableTarget;
-use crate::application::data::{self, dispatch};
 use crate::{application::data::dispatch::Dispatch, OperationApp};
 
 pub trait BuildTable {

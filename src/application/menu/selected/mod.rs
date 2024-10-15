@@ -3,7 +3,6 @@
 
 #[derive(PartialEq)]
 pub enum Menu {
-    PreOperativeDefault,
     PreOperativeToolReady
 }
 #[derive(PartialEq)]
