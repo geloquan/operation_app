@@ -2,6 +2,9 @@ mod database;
 
 mod action;
 
+use std::borrow::BorrowMut;
+use std::ops::{Deref, DerefMut};
+
 use application::menu::selected;
 use database::table::{
     ui_builder::BuildTable, data::TableData, join::structure::OperationSelect
@@ -12,8 +15,9 @@ use application::{authenticate::StaffCredential, field};
 use application::{states, component as app_component};
 
 pub mod ws;
-use egui::{Margin, Rounding, ScrollArea};
+use egui::{Align, Margin, Rounding, ScrollArea, Style, Vec2};
 use egui::{Color32, FontId, Frame, Pos2, RichText, TextEdit};
+use egui_extras::TableBuilder;
 use ws::receive::Handle;
 
 pub mod temporary;
@@ -65,6 +69,8 @@ const DARKMODE_RED_HIGHLIGHT: Color32 = Color32::from_rgb(45, 8, 10);
 #[allow(dead_code)]
 const DEBUGCOLOR: Color32 = Color32::GOLD;
 const SIDEPANELSIZE: f32 = 250.0;
+const FORM_BACKGROUND: Color32 = Color32::from_rgb(39, 45, 45);
+const FORM_TEXT_SIZE: f32 = 30.0;
 
 pub struct OperationApp {
     data: Option<TableData>,
@@ -83,7 +89,7 @@ impl OperationApp {
     fn new(_: &eframe::CreationContext<'_>) -> Self {
         
         let options = ewebsock::Options::default();
-        let (sender, receiver) = ewebsock::connect("ws://192.168.1.7:8080", options).unwrap();
+        let (sender, receiver) = ewebsock::connect("ws://192.168.1.2:8080", options).unwrap();
 
         OperationApp {
             data: None,
@@ -198,12 +204,14 @@ impl App for OperationApp {
                 .fill(Color32::default())
                 .show(ui, |ui| {
                     ui.set_height(ui.available_height());
-                    
-                    Frame::none()
-                    .inner_margin(Margin::same(20.0))
-                    .show(ui, |ui| {
-                        ui.heading(RichText::new("Action log"));
-                    });
+
+                    if self.get_selected_operation().is_some() {
+                        Frame::none()
+                        .inner_margin(Margin::same(20.0))
+                        .show(ui, |ui| {
+                            ui.heading(RichText::new("Action log"));
+                        });
+                    };
                     
                     ScrollArea::vertical()
                     .id_salt("action_log")
@@ -255,38 +263,110 @@ impl App for OperationApp {
                                 ui.label("💤 No results found");
                             } else if self.data.is_some() {
                                 if !self.search.search_operation_result.is_empty() {
-                                    ui.horizontal_centered(|ui| {
-                                        self.build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())));
+                                    Frame::none()
+                                    .fill(FORM_BACKGROUND)
+                                    .rounding(20.0)
+                                    .inner_margin(20.0)
+                                    .show(ui, |ui| {
+                                        ui.columns(1, |columns| {
+                                            columns[0].vertical_centered(|ui| {
+                                                ui.add_space(20.0);
+                                                ui.horizontal_centered(|ui| {
+                                                    self.build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())));
+                                                });
+                                            });
+                                        });
                                     });
                                 }
                             }
+                        } else if let (Some(selected_action), Some(_), Some(data)) = (&mut self.selected_action, &self.operation_id, &self.data) {
+                            ui.heading("New Requirement Form");
+                            ui.add_space(20.0);
+                            match selected_action {
+                                selected::Action::AddRequirement(s) => {
+                                    if let Some(s) = s {
+                                        match data.equipment.read() {
+                                            Ok(equipments) => {
+                                                Frame::none()
+                                                .fill(FORM_BACKGROUND)
+                                                .rounding(20.0)
+                                                .inner_margin(20.0)
+                                                .show(ui, |ui| {
+                                                    ui.columns(1, |columns| {
+                                                        columns[0].vertical_centered(|ui| {
+                                                            ui.set_width(150.0);
+                                                            ui.horizontal_wrapped(|ui| {
+                                                                ui.heading(RichText::new("Select: ").size(FORM_TEXT_SIZE));
+                                                                ui.separator();
+                                                                egui::ComboBox::from_label("")
+                                                                .selected_text(&s.name) 
+                                                                .show_ui(ui, |ui| {
+                                                                    for equipment in equipments.iter() {
+                                                                        if let Some(name) = &equipment.name {
+                                                                            ui.selectable_value(&mut s.name, name.clone(), name.clone());
+                                                                        }
+                                                                    }
+                                                                });
+                                                            });
+
+                                                            ui.horizontal_wrapped(|ui| {
+                                                                ui.label(RichText::new("On Site: ").size(FORM_TEXT_SIZE));
+                                                                ui.separator();
+                                                                let mut style: Style = (*ctx.style()).clone();
+                                                                style.spacing.icon_width = 32.0;
+                                                                style.spacing.icon_spacing = 16.0;
+                                                                ctx.set_style(style);
+                                                                ui.checkbox(&mut s.on_site, "");
+                                                            });
+                                                            ui.horizontal_wrapped(|ui| {
+                                                                if ui.button(RichText::new("SUBMIT").size(FORM_TEXT_SIZE)).clicked() {
+                                                                    println!("{:?}", s);
+                                                                }
+                                                            });
+                                                        });
+                                                    });
+                                                });
+                                            
+                                            },
+                                            Err(_) => todo!(),
+                                        }
+                                    }
+                                },
+                            }              
                         } else if let (Some(selected_menu), Some(_)) = (&self.selected_menu, self.operation_id) {
                             match selected_menu {
                                 application::menu::selected::Menu::PreOperativeToolReady => {
                                     if let Some(preoperative_tool_ready) = self.get_preoperative_tool_ready() {
                                         if let Some(data) = &mut self.data { 
-                                            self.build_table(ui, database::table::window::WindowTable::PreOperativeToolReady(Some(preoperative_tool_ready.clone())));
+                                            ui.heading("Tool Checklist");
+                                            ui.add_space(20.0);
+                                            
+                                            Frame::none()
+                                            .fill(FORM_BACKGROUND)
+                                            .rounding(20.0)
+                                            .inner_margin(20.0)
+                                            .show(ui, |ui| {
+                                                ui.columns(1, |columns| {
+                                                    columns[0].vertical_centered(|ui| {
+                                                        self.build_table(ui, database::table::window::WindowTable::PreOperativeToolReady(Some(preoperative_tool_ready.clone())));
+                                                    });
+                                                });
+                                            });
                                         }
                                     }
                                 },
                             }
-                        } else if let (Some(selected_action), Some(_)) = (&self.selected_action, self.operation_id) {
-                            match selected_action {
-                                selected::Action::AddRequirement => {
-                                    
-                                },
-                            }                                
-                        }
+                        } 
                     });
                 } 
             });
             egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-                Frame::none()
-                .inner_margin(Margin::same(10.))
-                .show(ui, |ui| {
-                        ui.horizontal(|ui| ui.heading("options:"));
-                    });
                 if let Some(operation) = self.get_selected_operation() {
+                    Frame::none()
+                    .inner_margin(Margin::same(10.))
+                    .show(ui, |ui| {
+                            ui.horizontal(|ui| ui.heading("options:"));
+                        });
                     ui.horizontal_centered(|ui| {
                         let staff_clr: Color32 = Color32::default();
                         let mut tool_clr: Color32 = Color32::default();
@@ -341,6 +421,7 @@ impl App for OperationApp {
                                     self.selected_menu = Some(application::menu::selected::Menu::PreOperativeToolReady);
                                 } else if v.clicked() {
                                     self.selected_menu = None;
+                                    self.selected_action = None;
                                 };
                             });
                         });
@@ -382,8 +463,8 @@ impl App for OperationApp {
                                 let tool = tool.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
                                 tool_response.push(tool);
                                 tool_response.iter().for_each(|v: &egui::Response| {
-                                    if v.clicked() && self.selected_action != Some(application::menu::selected::Action::AddRequirement) {
-                                        self.selected_action = Some(application::menu::selected::Action::AddRequirement);
+                                    if v.clicked() && !matches!(self.selected_action, Some(application::menu::selected::Action::AddRequirement(_))) {
+                                        self.selected_action = Some(application::menu::selected::Action::AddRequirement(Some(application::forms::NewEquipmentRequirement::default())));
                                     } else if v.clicked() {
                                         self.selected_action = None;
                                     };

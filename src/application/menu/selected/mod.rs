@@ -1,5 +1,4 @@
-
-
+use crate::application::forms::NewEquipmentRequirement;
 
 #[derive(PartialEq)]
 pub enum Menu {
@@ -7,5 +6,5 @@ pub enum Menu {
 }
 #[derive(PartialEq)]
 pub enum Action {
-    AddRequirement
+    AddRequirement(Option<NewEquipmentRequirement>)
 }

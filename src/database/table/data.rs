@@ -41,7 +41,8 @@ pub struct RawTable {
     pub frontdesk: Vec<public::Frontdesk>,
     pub alert_frontdesk: Vec<public::AlertFrontdesk>,
     pub alert_staff: Vec<public::AlertStaff>,
-    pub action_log: Vec<public::ActionLog>
+    pub action_log: Vec<public::ActionLog>,
+    pub equipment_request: Vec<public::EquipmentRequest>
 }
 #[derive(Debug, Clone)]
 pub struct TableData {
@@ -62,7 +63,8 @@ pub struct TableData {
     pub frontdesk:Arc<RwLock< Vec<public::Frontdesk>>>,
     pub alert_frontdesk: Arc<RwLock<Vec<public::AlertFrontdesk>>>,
     pub alert_staff: Arc<RwLock<Vec<public::AlertStaff>>>,
-    pub action_log: Arc<RwLock<Vec<public::ActionLog>>>
+    pub action_log: Arc<RwLock<Vec<public::ActionLog>>>,
+    pub equipment_request: Arc<RwLock<Vec<public::EquipmentRequest>>>
 }
 impl TableData {
     pub fn new() -> Self {
@@ -85,6 +87,7 @@ impl TableData {
             alert_frontdesk: Arc::new(RwLock::new(Vec::new())),
             alert_staff: Arc::new(RwLock::new(Vec::new())),
             action_log: Arc::new(RwLock::new(Vec::new())),
+            equipment_request: Arc::new(RwLock::new(Vec::new()))
         }
     }
     pub fn initialize(&mut self, raw_string: String) {
@@ -108,6 +111,7 @@ impl TableData {
         self.alert_frontdesk = Arc::new(RwLock::new(raw_table.alert_frontdesk.clone()));
         self.alert_staff = Arc::new(RwLock::new(raw_table.alert_staff.clone()));
         self.action_log = Arc::new(RwLock::new(raw_table.action_log.clone()));
+        self.equipment_request = Arc::new(RwLock::new(raw_table.equipment_request.clone()));
     }
     //pub fn update(&self, raw_string: String, database_table: DatabaseTable) {
     //    match serde_json::from_str::<UpdateEquipmentRow>(&raw_string) {

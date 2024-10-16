@@ -248,3 +248,10 @@ pub struct ActionLog {
     pub action: Option<ActionLogAction>,
     pub date_time: Option<String>       
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EquipmentRequest {
+    pub id: Option<i32>,
+    pub operation_id: Option<i32>,
+    pub equipment_id: Option<i32>,
+    pub source_staff_id: Option<i32>,
+}
