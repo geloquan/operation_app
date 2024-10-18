@@ -4,4 +4,5 @@ use serde::{Deserialize, Serialize};
 pub struct NewEquipmentRequirement {
     pub name: String,
     pub on_site: bool,
+    pub quantity: i32,
 }

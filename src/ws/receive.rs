@@ -53,7 +53,8 @@ impl Handle for OperationApp {
                     match text {
                         ewebsock::WsMessage::Binary(vec) => todo!(),
                         ewebsock::WsMessage::Text(text) => {
-                            println!("TEXT~!");
+                            let text_len = text.len();
+                            println!("text len: {:?}", text_len);
                             match serde_json::from_str::<EncryptedText>(&text) {
                                 Ok(encrypted_text) => {
                                     if let Ok(key) = &generate_fixed_key() {
@@ -63,10 +64,8 @@ impl Handle for OperationApp {
                                                     match message.operation {
                                                         Operation::Initialize => {
                                                             if let Some(data) = &mut self.data {
-                                                                println!("some data");
                                                                 data.initialize(message.data);
                                                             } else {
-                                                                println!("none data");
                                                                 let mut new_table_data = TableData::new();
                                                                 new_table_data.initialize(message.data);
                                                                 self.data = Some(new_table_data);

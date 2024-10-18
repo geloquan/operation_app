@@ -4,6 +4,7 @@ mod action;
 
 use std::borrow::BorrowMut;
 use std::ops::{Deref, DerefMut};
+use std::thread;
 
 use application::menu::selected;
 use database::table::{
@@ -15,9 +16,11 @@ use application::{authenticate::StaffCredential, field};
 use application::{states, component as app_component};
 
 pub mod ws;
-use egui::{Align, Margin, Rounding, ScrollArea, Style, Vec2};
+use egui::{Align, Id, LayerId, Margin, Order, Rounding, ScrollArea, Style, Vec2};
 use egui::{Color32, FontId, Frame, Pos2, RichText, TextEdit};
 use egui_extras::TableBuilder;
+use tokio::runtime::Runtime;
+use tokio::sync::mpsc;
 use ws::receive::Handle;
 
 pub mod temporary;
@@ -215,7 +218,7 @@ impl App for OperationApp {
                     
                     ScrollArea::vertical()
                     .id_salt("action_log")
-                    .auto_shrink([false; 2]) // Disable auto-shrink if needed
+                    .auto_shrink([false; 2]) 
                     .show(ui, |ui| {
                         if let Some(action_log) = self.get_action_log_operation() {
                             for row in &action_log {
@@ -317,6 +320,20 @@ impl App for OperationApp {
                                                                 style.spacing.icon_spacing = 16.0;
                                                                 ctx.set_style(style);
                                                                 ui.checkbox(&mut s.on_site, "");
+                                                            });
+                                                            
+                                                            ui.horizontal_wrapped(|ui| {
+                                                                ui.label(RichText::new("Quantity: ").size(FORM_TEXT_SIZE));
+                                                                ui.separator();
+                                                                ui.with_layer_id(LayerId::new(Order::Tooltip, Id::new("equipment_request_quantity_layer")),|ui| {
+                                                                    egui::ComboBox::from_label("")
+                                                                    .selected_text(s.quantity.to_string())
+                                                                    .show_ui(ui, |ui| {
+                                                                        for i in 1..=99 {
+                                                                            ui.selectable_value(&mut s.quantity, i, i.to_string());
+                                                                        }
+                                                                    });
+                                                                });
                                                             });
                                                             ui.horizontal_wrapped(|ui| {
                                                                 if ui.button(RichText::new("SUBMIT").size(FORM_TEXT_SIZE)).clicked() {
@@ -480,9 +497,22 @@ impl App for OperationApp {
     }
 }
 
-#[tokio::main]
-async fn main() {
-    let native_options = eframe::NativeOptions::default();
+fn main() {
+    let native_options: eframe::NativeOptions = eframe::NativeOptions::default();
+
+    let (tx, rx): (mpsc::Sender<i32>, mpsc::Receiver<i32>) = mpsc::channel(1);
+
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+        tokio::spawn(async move {
+        });
+    });
+
+    run_app(native_options);
+
+}
+
+fn run_app(native_options: eframe::NativeOptions) {
     let _ = eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
         let app = OperationApp::new(cc);
         Ok(Box::new(app))
