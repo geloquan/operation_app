@@ -7,6 +7,7 @@ use std::ops::{Deref, DerefMut};
 use std::thread;
 
 use application::menu::selected;
+use cipher::{decrypt_message, generate_fixed_key, EncryptedText};
 use database::table::{
     ui_builder::BuildTable, data::TableData, join::structure::OperationSelect
 };
@@ -22,7 +23,7 @@ use egui_extras::TableBuilder;
 use futures::channel::mpsc::Receiver;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
-use ws::receive::Handle;
+use ws::receive::{Handle, Operation, ReceiveMessage};
 
 pub mod temporary;
 
@@ -78,8 +79,8 @@ const FORM_TEXT_SIZE: f32 = 30.0;
 
 pub struct OperationApp {
     data: Option<TableData>,
-    sender: WsSender,
-    receiver: WsReceiver,
+    sender: mpsc::Sender<String>,
+    receiver: mpsc::Receiver<String>,
     search: PreRunning,
     staff: Option<StaffCredential>,
     credential_panel: states::Login,
@@ -90,15 +91,12 @@ pub struct OperationApp {
 }
 
 impl OperationApp {
-    fn new(_: &eframe::CreationContext<'_>) -> Self {
+    fn new(_: &eframe::CreationContext<'_>, app_rx: mpsc::Receiver<String>, backend_tx: mpsc::Sender<String>) -> Self {
         
-        let options = ewebsock::Options::default();
-        let (sender, receiver) = ewebsock::connect("ws://192.168.1.2:8080", options).unwrap();
-
         OperationApp {
             data: None,
-            sender,
-            receiver,
+            sender: backend_tx,
+            receiver: app_rx,
             search: PreRunning::default(),
             staff: None,
             credential_panel: states::Login {
@@ -504,26 +502,122 @@ impl App for OperationApp {
 fn main() {
     let native_options: eframe::NativeOptions = eframe::NativeOptions::default();
 
-    let (tx, rx): (mpsc::Sender<i32>, mpsc::Receiver<i32>) = mpsc::channel(1);
-
-    let rt = Runtime::new().unwrap();
-
-    let rx_clone = tx.clone();
-    
-    let _backend_thread = rt.block_on(async {
+    let (backend_tx, mut backend_rx): (mpsc::Sender<String>, mpsc::Receiver<String>) = mpsc::channel(1_000_000);
+    let (app_tx, mut app_rx): (mpsc::Sender<String>, mpsc::Receiver<String>) = mpsc::channel(1_000_000);
+        
+    let (mut sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", ewebsock::Options::default()).unwrap();
+    let _server_socket_thread = Runtime::new()
+    .unwrap()
+    .block_on(async {
         tokio::spawn(async move {
-            
+            while let Some(message) = receiver.try_recv() {
+                match message {
+                    ewebsock::WsEvent::Opened => {
+                        
+                    },
+                    ewebsock::WsEvent::Message(text) => {
+                        match text {
+                            ewebsock::WsMessage::Binary(vec) => todo!(),
+                            ewebsock::WsMessage::Text(text) => {
+                                let text_len = text.len();
+                                println!("text len: {:?}", text_len);
+                                match serde_json::from_str::<EncryptedText>(&text) {
+                                    Ok(encrypted_text) => {
+                                        if let Ok(key) = &generate_fixed_key() {
+                                            if let Ok(decrypted_text) = decrypt_message(key, &encrypted_text.nonce, &encrypted_text.cipher_text) {
+                                                match serde_json::from_str::<ReceiveMessage>(&decrypted_text) {
+                                                    Ok(message) => {
+                                                        match message.operation {
+                                                            Operation::Initialize => {
+                                                                if let Some(data) = &mut self.data {
+                                                                    data.initialize(message.data);
+                                                                } else {
+                                                                    let mut new_table_data = TableData::new();
+                                                                    new_table_data.initialize(message.data);
+                                                                    self.data = Some(new_table_data);
+                                                                }
+                                                            },
+                                                            Operation::Update => {
+                                                                println!("update: {:?}", message);
+                                                                self.update(message);
+                                                            },
+                                                            Operation::AuthHandshake => {
+                                                                println!("statuscode {:?}", message.status_code);
+                                                                if let Ok(staff_credential) = serde_json::from_str::<StaffCredential>(&message.data) {
+                                                                    self.staff = Some(staff_credential);
+                                                                } else {
+                                                                    self.staff = None;
+                                                                }
+                                                                if message.status_code == "success" { 
+                                                                    self.credential_panel.state = design::State::Valid
+                                                                }
+                                                                else if message.status_code == "failed" { 
+                                                                    self.credential_panel.state = design::State::Error 
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    Err(_) => {
+                                                        println!("err parsing: ReceiveMessage");
+                                                    },
+                                                }
+                                            }
+                                        }
+                                    },
+                                    Err(_) => {
+                                        
+                                    },
+                                }
+                            },
+                            ewebsock::WsMessage::Unknown(_) => todo!(),
+                            ewebsock::WsMessage::Ping(vec) => todo!(),
+                            ewebsock::WsMessage::Pong(vec) => todo!(),
+                        }
+                    },
+                    ewebsock::WsEvent::Error(_) => {
+                        let options = ewebsock::Options::default();
+                        let (mut sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", options).unwrap();
+                        
+                        let request_json = serde_json::to_string(&SendMessage {
+                            level: "Operation".to_string(),
+                            method: "Initial".to_string(),
+                            data: Some(json!({"content": "Hello from button('Send Message')!"})),
+                            staff_credential: self.staff.clone(),
+                            action: None
+                        }).unwrap();
+                        sender.send(ewebsock::WsMessage::Text(request_json));
+    
+                        self.sender = sender;
+                        self.receiver = receiver;
+                    },
+                    ewebsock::WsEvent::Closed => {
+    
+                    },
+                }
+            }
         });
     });
 
-    let _app_thread = run_app(native_options, rx);
+    let _backend_thread = Runtime::new()
+    .unwrap()
+    .block_on(async {
+        tokio::spawn(async move {
+            println!("backend-thread");
+            
+            while let Ok(msg) = backend_rx.try_recv() {
+                sender.send(ewebsock::WsMessage::Text("".to_string()));
+                //sender
+            }
+        });
+    });
+    let _app_thread = run_app(native_options, app_rx, backend_tx);
 
 }
 
-fn run_app(native_options: eframe::NativeOptions, rx: mpsc::Receiver<i32>) -> Result<(), eframe::Error> {
+fn run_app(native_options: eframe::NativeOptions, app_rx: mpsc::Receiver<String>, backend_tx: mpsc::Sender<String>) -> Result<(), eframe::Error> {
     eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
-        let app = OperationApp::new(cc);
-
+        let app = OperationApp::new(cc, app_rx, backend_tx);
+        
         Ok(Box::new(app))
     }))
 }

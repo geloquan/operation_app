@@ -44,7 +44,7 @@ pub trait Handle {
 } 
 impl Handle for OperationApp {
     fn handle_incoming(&mut self) {
-        if let Some(msg) = self.receiver.try_recv() {
+        if let Ok(msg) = self.receiver.try_recv() {
             match msg {
                 ewebsock::WsEvent::Opened => {
                     
