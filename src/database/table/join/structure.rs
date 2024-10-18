@@ -38,6 +38,7 @@ pub struct PreOperativeToolReady {
 pub struct ActionLogProperty {
     pub staff: String,
     pub label: String,
+    pub label_reference: String,
     pub before_val: String,
     pub after_val: String,
     pub date: String,

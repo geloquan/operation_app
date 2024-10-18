@@ -19,6 +19,7 @@ pub mod ws;
 use egui::{Align, Id, LayerId, Margin, Order, Rounding, ScrollArea, Style, Vec2};
 use egui::{Color32, FontId, Frame, Pos2, RichText, TextEdit};
 use egui_extras::TableBuilder;
+use futures::channel::mpsc::Receiver;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 use ws::receive::Handle;
@@ -223,9 +224,10 @@ impl App for OperationApp {
                         if let Some(action_log) = self.get_action_log_operation() {
                             for row in &action_log {
                                 ui.horizontal(|ui| {
-                                    ui.label("label: ");
-                                    ui.label(row.label.clone());
+                                    ui.label("target: ");
+                                    ui.label(row.label_reference.clone());
                                 });
+                                ui.label(row.label.clone());
                                 ui.horizontal(|ui| {
                                     ui.label("staff: ");
                                     ui.label(row.staff.clone());
@@ -299,16 +301,18 @@ impl App for OperationApp {
                                                         columns[0].vertical_centered(|ui| {
                                                             ui.set_width(150.0);
                                                             ui.horizontal_wrapped(|ui| {
-                                                                ui.heading(RichText::new("Select: ").size(FORM_TEXT_SIZE));
-                                                                ui.separator();
-                                                                egui::ComboBox::from_label("")
-                                                                .selected_text(&s.name) 
-                                                                .show_ui(ui, |ui| {
-                                                                    for equipment in equipments.iter() {
-                                                                        if let Some(name) = &equipment.name {
-                                                                            ui.selectable_value(&mut s.name, name.clone(), name.clone());
+                                                                ui.push_id("select", |ui| {
+                                                                    ui.heading(RichText::new("Select: ").size(FORM_TEXT_SIZE));
+                                                                    ui.separator();
+                                                                    egui::ComboBox::from_label("")
+                                                                    .selected_text(&s.name) 
+                                                                    .show_ui(ui, |ui| {
+                                                                        for equipment in equipments.iter() {
+                                                                            if let Some(name) = &equipment.name {
+                                                                                ui.selectable_value(&mut s.name, name.clone(), name.clone());
+                                                                            }
                                                                         }
-                                                                    }
+                                                                    });
                                                                 });
                                                             });
 
@@ -323,9 +327,9 @@ impl App for OperationApp {
                                                             });
                                                             
                                                             ui.horizontal_wrapped(|ui| {
-                                                                ui.label(RichText::new("Quantity: ").size(FORM_TEXT_SIZE));
-                                                                ui.separator();
-                                                                ui.with_layer_id(LayerId::new(Order::Tooltip, Id::new("equipment_request_quantity_layer")),|ui| {
+                                                                ui.push_id("qty", |ui| {
+                                                                    ui.label(RichText::new("Quantity: ").size(FORM_TEXT_SIZE));
+                                                                    ui.separator();
                                                                     egui::ComboBox::from_label("")
                                                                     .selected_text(s.quantity.to_string())
                                                                     .show_ui(ui, |ui| {
@@ -503,18 +507,23 @@ fn main() {
     let (tx, rx): (mpsc::Sender<i32>, mpsc::Receiver<i32>) = mpsc::channel(1);
 
     let rt = Runtime::new().unwrap();
-    rt.block_on(async {
+
+    let rx_clone = tx.clone();
+    
+    let _backend_thread = rt.block_on(async {
         tokio::spawn(async move {
+            
         });
     });
 
-    run_app(native_options);
+    let _app_thread = run_app(native_options, rx);
 
 }
 
-fn run_app(native_options: eframe::NativeOptions) {
-    let _ = eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
+fn run_app(native_options: eframe::NativeOptions, rx: mpsc::Receiver<i32>) -> Result<(), eframe::Error> {
+    eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
         let app = OperationApp::new(cc);
+
         Ok(Box::new(app))
-    }));
+    }))
 }

@@ -1,5 +1,5 @@
 use super::structure::{ActionLogProperty, OperationSelect, PreOperativeDefault, PreOperativeToolReady};
-use crate::{database::table::{public::{ActionLog, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
+use crate::{database::table::{self, public::{ActionLog, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
 
 impl OperationApp {
     pub fn select_operation(&mut self, id: &i32) {
@@ -189,14 +189,6 @@ impl OperationApp {
             let action_log = data.action_log.read().unwrap();
             let action_logs: Option<Vec<ActionLogProperty>> = Some(
                 action_log.iter()
-                    .filter(|al: &&ActionLog| {
-                        if let Some(operation_id) = &self.operation_id {
-                            if let (Some(table_name), Some(id)) = (&al.table_name, al.row_id) {
-                                return table_name == &Tables::OperationTool && operation_id == &id;
-                            }
-                        }
-                        false
-                    })
                     .filter_map(|al: &ActionLog| {
                         let staff_full_name = staff.iter()
                             .find(|s| al.staff_id.map_or(false, |id| id == s.id.unwrap_or(0)))
@@ -206,25 +198,84 @@ impl OperationApp {
                                 s.last_name.clone().unwrap_or_else(|| "N/A".to_string())
                             )})
                             .unwrap_or_else(|| "N/A".to_string());
+                        let label_reference: Option<String> = match &al.table_name {
+                            Some(table) => {
+                                match table {
+                                    Tables::Equipment => None,
+                                    Tables::Room => None,     
+                                    Tables::Tool => None,     
+                                    Tables::Staff => None,    
+                                    Tables::ToolReservation => None,
+                                    Tables::ToolDesignatedRoom => None,
+                                    Tables::ToolInspector => None,
+                                    Tables::Patient => None,  
+                                    Tables::Operation => None,
+                                    Tables::PatientWardRoom => None, 
+                                    Tables::PatientWardAssistant => None,
+                                    Tables::OperationStaff => None,
+                                    Tables::OperationTool => {
+                                        let operation_tools = data.operation_tool.read().unwrap();
+                                        let tools = data.tool.read().unwrap();
+                                        let equipments = data.equipment.read().unwrap();
+
+                                        operation_tools.iter().find_map(|opt| {
+                                            let opt_id = opt.id?;
+                                            let al_row_id = al.row_id?;
+                                            let opt_tool_id = opt.tool_id?;
+
+                                            if opt_id != al_row_id {
+                                                return None;
+                                            }
+
+                                            tools.iter().find_map(|t| {
+                                                let tool_id = t.id?;
+                                                if tool_id != opt_tool_id {
+                                                    return None;
+                                                }
+
+                                                let equipment_id = t.info_id?;
+                                                equipments.iter().find_map(|e| {
+                                                    if e.id.unwrap_or(0) != equipment_id {
+                                                        return None;
+                                                    }
+
+                                                    e.name.clone()
+                                                })
+                                            })
+                                        })
+
+                                    },
+                                    Tables::Alert => None, 
+                                    Tables::Frontdesk => None,
+                                    Tables::AlertFrontdesk => None,
+                                    Tables::AlertStaff => None,
+                                    Tables::ActionLog => None,
+                                }
+                            },
+                            None => None,
+                        };
                         if let (
                                 Some(label),
                                 Some(new_value),
                                 Some(old_value),
-                                Some(date_time)
+                                Some(date_time),
+                                Some(label_reference)
                             ) = 
                             (
                                 &al.label,
                                 &al.new_value,
                                 &al.old_value,
-                                &al.date_time
+                                &al.date_time,
+                                label_reference
                             )
                         {
                             Some(ActionLogProperty {
                                 label: label.to_string(),
                                 staff: staff_full_name.clone(),
+                                label_reference,
                                 before_val: old_value.clone(),
                                 after_val: new_value.clone(),
-                                date: date_time.clone()
+                                date: date_time.clone(),
                             }) 
                         } else {
                             None

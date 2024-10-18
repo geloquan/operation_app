@@ -13,7 +13,6 @@ impl Update for OperationApp {
         if let TableTarget::ActionLog = message.table_name {
             match serde_json::from_str::<ActionLog>(&message.data) {
                 Ok(action_log_data) => {
-                    println!("action log:{:?}", action_log_data);
                     match action_log_data.table_name {
                         Some(ref table) => {
                             match table {
@@ -32,7 +31,6 @@ impl Update for OperationApp {
                                 table::Tables::OperationTool => {
                                     if let Some(data) = &self.data {
                                         {
-                                            println!("data {:?}", data);
                                             let mut action_log: std::sync::RwLockWriteGuard<'_, Vec<ActionLog>> = data.action_log.write().unwrap();
                                             action_log.push(action_log_data.clone());
                                         }
