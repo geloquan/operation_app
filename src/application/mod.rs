@@ -5,8 +5,6 @@ pub mod field;
 
 pub mod component;
 
-pub mod menu;
-
 pub mod data;
 
 pub mod server_notification;
@@ -14,6 +12,8 @@ pub mod server_notification;
 use crate::database::table::tree::TableTree;
 
 pub mod forms;
+
+pub mod operation;
 
 pub struct RunningApp {
     pub operation_id: i32,

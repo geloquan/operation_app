@@ -1,11 +1,11 @@
-use super::structure::{ActionLogProperty, OperationSelect, PreOperativeDefault, PreOperativeToolReady};
-use crate::{database::table::{self, public::{ActionLog, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
+use super::structure::{ActionLogProperty, OperationSelect, PreOperativeToolReady};
+use crate::{application::operation::menu::preoperative, database::table::{self, public::{ActionLog, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
 
 impl OperationApp {
     pub fn select_operation(&mut self, id: &i32) {
         self.operation_id = Some(*id);
     }
-    pub fn get_selected_operation(&mut self) -> Option<PreOperativeDefault> {
+    pub fn get_selected_preoperation(&mut self) -> Option<preoperative::Init> {
         if let Some(data) = &self.data {
             let operation = data.operation.read().unwrap();
             let patient = data.patient.read().unwrap();
@@ -14,7 +14,7 @@ impl OperationApp {
             
             let operation_staff = data.operation_staff.read().unwrap();
     
-            let operation_select: Option<PreOperativeDefault> = operation.iter().find_map(|op| {
+            let operation_select: Option<preoperative::Init> = operation.iter().find_map(|op| {
                 if let Some(op_id) = op.id {
                     if let Some(operation_id) = &self.operation_id {
                         if &op_id == operation_id {
@@ -55,7 +55,7 @@ impl OperationApp {
                                     
                             let on_site_percentage = on_site_ratio * 100.0;
 
-                            return Some(PreOperativeDefault {
+                            return Some(preoperative::Init {
                                 op_id,
                                 op_label,
                                 patient_full_name,
