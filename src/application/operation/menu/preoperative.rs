@@ -1,7 +1,9 @@
+use std::default;
+
 use crate::{application::forms::NewEquipmentRequirement, database::table::public::OperationStatus};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Menu {
     pub selected_menu: Option<MenuOptions>,
     pub selected_action: Option<Action>,

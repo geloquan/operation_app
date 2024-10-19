@@ -4,7 +4,7 @@ use egui_extras::{TableBuilder, Column};
 use super::private::OperationToolOnSiteToggle;
 use super::window::WindowTable;
 
-use crate::action;
+use crate::{action, application};
 use crate::{application::data::dispatch::Dispatch, OperationApp};
 
 pub trait BuildTable {
@@ -62,6 +62,15 @@ impl BuildTable for OperationApp {
                             row.col(|ui| {
                                 if ui.button("    ⮩    ").clicked() {
                                     self.operation_id = Some(content.operation_id);
+                                    match content.operation_status.as_str() {
+                                        "Pre-Operative" => {
+                                            self.operation_state = Some(application::operation::State::Preoperation(application::operation::menu::preoperative::Menu::default()))
+                                        },
+                                        _ => {
+
+                                        }
+                                    }
+
                                 }
                             });
                         });

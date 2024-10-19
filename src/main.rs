@@ -361,7 +361,7 @@ impl App for OperationApp {
                                             },
                                             menu::preoperative::Action::AddRequirement(new_equipment_requirement) => todo!(),
                                         }     
-                                    } if let Some(selected_menu) = &menu.selected_menu {
+                                    } else if let Some(selected_menu) = &menu.selected_menu {
                                         match selected_menu {
                                             application::operation::menu::preoperative::MenuOptions::ToolReady => {
                                                 if let Some(preoperative_tool_ready) = self.get_preoperative_tool_ready() {
@@ -396,92 +396,86 @@ impl App for OperationApp {
                 } 
             });
             egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-                match self.operation_state.clone() {
-                    Some(operation_state) => {
-                        match operation_state {
-                            application::operation::State::Preoperation(mut menu) => {
-                                if let Some(operation) = self.get_selected_preoperation() {
-                                    Frame::none()
-                                    .inner_margin(Margin::same(10.))
-                                    .show(ui, |ui| {
-                                            ui.horizontal(|ui| ui.heading("options:"));
-                                        });
-                                    ui.horizontal_centered(|ui| {
-                                        let staff_clr: Color32 = Color32::default();
-                                        let mut tool_clr: Color32 = Color32::default();
-                                        let ascend_clr: Color32 = Color32::default();
-                                        
-                                        let mut staff_response = Vec::new();
-                                        let staff = ui.horizontal(|ui| {
-                                            staff_response.push(ui.label(RichText::new("👷").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                            ui.vertical(|ui| {
-                                                staff_response.push(ui.heading(RichText::new("STAFF").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                                staff_response.push(ui.label(RichText::new(operation.staff_count.to_string()).size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                            });
-                                        }).response;
-                                        let staff = staff.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-                                        staff_response.push(staff);
-                                    
-                                    
-                                        let mut ascend_response = Vec::new();
-                                        let ascend = ui.horizontal(|ui| {
-                                            ascend_response.push(ui.label(RichText::new("⏭").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                            ui.vertical(|ui| {
-                                                ascend_response.push(ui.heading(RichText::new("ASCEND").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                            });
-                                        }).response;
-                                        let ascend = ascend.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-                                        ascend_response.push(ascend);
-                
-                                        
-                                        
-                                        Frame::none()
-                                        .rounding(Rounding::same(20.0))
-                                        .fill(tool_clr)
-                                        .inner_margin(Margin::same(20.0))
-                                        .show(ui, |ui| {
-                                            let mut tool_response = Vec::new();
-                                            let tool = ui.horizontal(|ui| {
-                                                tool_response.push(ui.label(RichText::new("⚒").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                                ui.vertical(|ui| {
-                                                    tool_response.push(ui.heading(RichText::new("TOOLS").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                                    tool_response.push(ui.label(RichText::new(format!("{:?} / {:?}", operation.on_site_tools, operation.total_tools)).size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                                });
-                                            }).response;
-                                            let tool = tool.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-                                            tool_response.push(tool);
-                        
-                                            tool_response.iter().for_each(|v| {
-                                                if v.clicked() && menu.selected_menu != Some(operation::menu::preoperative::MenuOptions::ToolReady) {
-                                                    menu.selected_menu = Some(operation::menu::preoperative::MenuOptions::ToolReady);
-                                                } else if v.clicked() {
-                                                    menu.selected_menu = None;
-                                                    menu.selected_action = None;
-                                                };
-                                            });
-                                        });
-                
-                                        staff_response.iter().for_each(|v| {
-                                            if v.clicked() {
-                                                println!("hello staff!");
-                                            };
-                                        });
-                                        ascend_response.iter().for_each(|v| {
-                                            if v.clicked() {
-                                                println!("hello ascend!");
-                                            };
-                                        });
-                                        
+                if let (Some(operation), Some(operation_state)) = (self.get_selected_preoperation().clone(), &mut self.operation_state) {
+                    match operation_state {
+                        application::operation::State::Preoperation(menu) => {
+                            Frame::none()
+                            .inner_margin(Margin::same(10.))
+                            .show(ui, |ui| {
+                                    ui.horizontal(|ui| ui.heading("options:"));
+                                });
+                            ui.horizontal_centered(|ui| {
+                                let staff_clr: Color32 = Color32::default();
+                                let mut tool_clr: Color32 = Color32::default();
+                                let ascend_clr: Color32 = Color32::default();
+                                
+                                let mut staff_response = Vec::new();
+                                let staff = ui.horizontal(|ui| {
+                                    staff_response.push(ui.label(RichText::new("👷").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                    ui.vertical(|ui| {
+                                        staff_response.push(ui.heading(RichText::new("STAFF").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                        staff_response.push(ui.label(RichText::new(operation.staff_count.to_string()).size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
                                     });
-                                }
-                            },
-                            application::operation::State::Intraoperation => todo!(),
-                            application::operation::State::Postoperation => todo!(),
-                        }
-                    },
-                    None => {
-                        
-                    },
+                                }).response;
+                                let staff = staff.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+                                staff_response.push(staff);
+                            
+                            
+                                let mut ascend_response = Vec::new();
+                                let ascend = ui.horizontal(|ui| {
+                                    ascend_response.push(ui.label(RichText::new("⏭").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                    ui.vertical(|ui| {
+                                        ascend_response.push(ui.heading(RichText::new("ASCEND").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                    });
+                                }).response;
+                                let ascend = ascend.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+                                ascend_response.push(ascend);
+        
+                                
+                                
+                                Frame::none()
+                                .rounding(Rounding::same(20.0))
+                                .fill(tool_clr)
+                                .inner_margin(Margin::same(20.0))
+                                .show(ui, |ui| {
+                                    let mut tool_response = Vec::new();
+                                    let tool = ui.horizontal(|ui| {
+                                        tool_response.push(ui.label(RichText::new("⚒").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                        ui.vertical(|ui| {
+                                            tool_response.push(ui.heading(RichText::new("TOOLS").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                            tool_response.push(ui.label(RichText::new(format!("{:?} / {:?}", operation.on_site_tools, operation.total_tools)).size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                        });
+                                    }).response;
+                                    let tool = tool.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+                                    tool_response.push(tool);
+                
+                                    tool_response.iter().for_each(|v| {
+                                        if v.clicked() && menu.selected_menu != Some(operation::menu::preoperative::MenuOptions::ToolReady) {
+                                            menu.selected_menu = Some(operation::menu::preoperative::MenuOptions::ToolReady);
+                                        } else if v.clicked() {
+                                            menu.selected_menu = None;
+                                            menu.selected_action = None;
+                                        };
+                                    });
+                                });
+        
+                                staff_response.iter().for_each(|v| {
+                                    if v.clicked() {
+                                        println!("hello staff!");
+                                    };
+                                });
+                                ascend_response.iter().for_each(|v| {
+                                    if v.clicked() {
+                                        println!("hello ascend!");
+                                    };
+                                });
+                                
+                            });
+                        },
+                        application::operation::State::Intraoperation => todo!(),
+                        application::operation::State::Postoperation => todo!(),
+                    }
+                
                 }
                 ui.add_space(40.0);
             });
