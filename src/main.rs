@@ -6,7 +6,8 @@ use std::borrow::BorrowMut;
 use std::ops::{Deref, DerefMut};
 use std::thread;
 
-use application::operation::menu;
+use application::forms::NewEquipmentRequirement;
+use application::operation::menu::{self, preoperative};
 use database::table::{
     ui_builder::BuildTable, data::TableData, join::structure::OperationSelect
 };
@@ -364,8 +365,11 @@ impl App for OperationApp {
                                     } else if let Some(selected_menu) = &menu.selected_menu {
                                         match selected_menu {
                                             application::operation::menu::preoperative::MenuOptions::ToolReady => {
+                                                println!("A");
                                                 if let Some(preoperative_tool_ready) = self.get_preoperative_tool_ready() {
+                                                    println!("B");
                                                     if let Some(data) = &mut self.data { 
+                                                        println!("C");
                                                         ui.heading("Tool Checklist");
                                                         ui.add_space(20.0);
                                                         
@@ -396,7 +400,7 @@ impl App for OperationApp {
                 } 
             });
             egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-                if let (Some(operation), Some(operation_state)) = (self.get_selected_preoperation().clone(), &mut self.operation_state) {
+                if let (Some(operation), Some(operation_state)) = (&mut self.get_selected_preoperation(), &mut self.operation_state) {
                     match operation_state {
                         application::operation::State::Preoperation(menu) => {
                             Frame::none()
@@ -482,40 +486,55 @@ impl App for OperationApp {
 
             if let Some(operation_state) = &mut self.operation_state {
                 egui::TopBottomPanel::bottom("bottome").show(ctx, |ui| {
-                    Frame::none()
-                    .inner_margin(Margin::same(10.))
-                    .show(ui, |ui| {
-                        ui.heading("actions")
-                    });
+                    
                     match operation_state {
                         operation::State::Preoperation(menu) => {
-                            match menu.selected_action.as_mut() {
-                                Some(selected_action) => {
-                                    let _ = Frame::none()
-                                    .rounding(Rounding::same(20.0))
-                                    .fill(Color32::TRANSPARENT)
-                                    .inner_margin(Margin::same(20.0))
-                                    .show(ui, |ui| {
-                                        let mut tool_response = Vec::new();
-                                        let first_tool = ui.horizontal(|ui| {
-                                            tool_response.push(ui.label(RichText::new("⊞").size(40.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                            tool_response.push(ui.heading(RichText::new("add new requirement").size(20.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                        }).response;
-                            
-                                        let tool = first_tool.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-                                        tool_response.push(tool);
-                                        tool_response.iter().for_each(|v: &egui::Response| {
-                                            if v.clicked() && !matches!(selected_action, application::operation::menu::preoperative::Action::AddRequirement(_)) {
-                                                *selected_action = menu::preoperative::Action::AddRequirement(Some(application::forms::NewEquipmentRequirement::default()));
-                                            } else if v.clicked() {
-                                                *selected_action = menu::preoperative::Action::AddRequirement(None);
-                                            };
+                            Frame::none()
+                            .inner_margin(Margin::same(10.))
+                            .show(ui, |ui| {
+                                match menu.selected_menu {
+                                    Some(_) => {
+                                        ui.heading("actions");
+                                    },
+                                    None => {
+                                        ui.heading("select menu to show actions");
+                                    },
+                                }
+                            });
+                        },
+                        operation::State::Intraoperation => todo!(),
+                        operation::State::Postoperation => todo!(),
+                    }
+                    match operation_state {
+                        operation::State::Preoperation(menu) => {
+                            if let (Some(selected_menu), selected_action) = (menu.selected_menu.as_mut(), &mut menu.selected_action) {
+                                match selected_menu {
+                                    menu::preoperative::MenuOptions::Staff => todo!(),
+                                    menu::preoperative::MenuOptions::ToolReady => {
+                                        let _ = Frame::none()
+                                        .rounding(Rounding::same(20.0))
+                                        .fill(Color32::TRANSPARENT)
+                                        .inner_margin(Margin::same(20.0))
+                                        .show(ui, |ui| {
+                                            let mut tool_response = Vec::new();
+                                            let first_tool = ui.horizontal(|ui| {
+                                                tool_response.push(ui.label(RichText::new("⊞").size(40.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                                tool_response.push(ui.heading(RichText::new("add new requirement").size(20.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                            }).response;
+                                
+                                            let tool = first_tool.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+                                            tool_response.push(tool);
+                                            tool_response.iter().for_each(|v: &egui::Response| {
+                                                if v.clicked() && !matches!(selected_action, Some(_)) {
+                                                    //Some(&mut preoperative::Action::AddRequirement(Some(NewEquipmentRequirement::default())));
+                                                    *selected_action = Some(preoperative::Action::AddRequirement(Some(NewEquipmentRequirement::default())));
+                                                } else if v.clicked() {
+                                                    *selected_action = None;
+                                                };
+                                            });
                                         });
-                                    });
-                                },
-                                None => {
-                                    
-                                },
+                                    },
+                                }
                             }
                         
                         },
