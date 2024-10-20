@@ -304,7 +304,6 @@ impl App for OperationApp {
                                                     match data.equipment.read() {
                                                         Ok(equipments) => {
                                                             Frame::none()
-                                                            .fill(FORM_BACKGROUND)
                                                             .rounding(20.0)
                                                             .inner_margin(20.0)
                                                             .show(ui, |ui| {
@@ -326,7 +325,6 @@ impl App for OperationApp {
                                                                                 });
                                                                             });
                                                                         });
-
                                                                         ui.horizontal_wrapped(|ui| {
                                                                             ui.label(RichText::new("On Site: ").size(FORM_TEXT_SIZE));
                                                                             ui.separator();
@@ -336,7 +334,6 @@ impl App for OperationApp {
                                                                             ctx.set_style(style);
                                                                             ui.checkbox(&mut s.on_site, "");
                                                                         });
-                                                                        
                                                                         ui.horizontal_wrapped(|ui| {
                                                                             ui.push_id("qty", |ui| {
                                                                                 ui.label(RichText::new("Quantity: ").size(FORM_TEXT_SIZE));
@@ -511,8 +508,6 @@ impl App for OperationApp {
                                     menu::preoperative::MenuOptions::Staff => todo!(),
                                     menu::preoperative::MenuOptions::ToolReady => {
                                         let _ = Frame::none()
-                                        .rounding(Rounding::same(20.0))
-                                        .fill(Color32::TRANSPARENT)
                                         .inner_margin(Margin::same(20.0))
                                         .show(ui, |ui| {
                                             let mut tool_response = Vec::new();
