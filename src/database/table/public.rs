@@ -255,3 +255,9 @@ pub struct EquipmentRequest {
     pub equipment_id: Option<i32>,
     pub source_staff_id: Option<i32>,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PatientConsent {
+    pub id: Option<i32>,
+    pub patient_id: Option<i32>,
+    pub approved: Option<i8>
+}

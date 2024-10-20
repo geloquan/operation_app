@@ -11,8 +11,6 @@ pub mod server_notification;
 
 use crate::database::table::tree::TableTree;
 
-pub mod forms;
-
 pub mod operation;
 
 pub struct RunningApp {

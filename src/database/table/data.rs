@@ -4,24 +4,6 @@ use serde::{Deserialize, Serialize};
 
 use super::*;
 
-#[derive(Deserialize, Debug, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum TableRow {
-    Equipment(public::Equipment), 
-    Room(public::Room),           
-    Tool(public::Tool),           
-    Staff(public::Staff),         
-    ToolReservation(public::ToolReservation), 
-    ToolDesignatedRoom(public::ToolDesignatedRoom),
-    ToolInspector(public::ToolInspector),  
-    Patient(public::Patient),              
-    Operation(public::Operation),          
-    PatientWardRoom(public::PatientWardRoom), 
-    PatientWardAssistant(public::PatientWardAssistant), 
-    OperationStaff(public::OperationStaff),  
-    OperationTool(public::OperationTool), 
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RawTable {
     pub equipment: Vec<public::Equipment>,
@@ -42,7 +24,8 @@ pub struct RawTable {
     pub alert_frontdesk: Vec<public::AlertFrontdesk>,
     pub alert_staff: Vec<public::AlertStaff>,
     pub action_log: Vec<public::ActionLog>,
-    pub equipment_request: Vec<public::EquipmentRequest>
+    pub equipment_request: Vec<public::EquipmentRequest>,
+    pub patient_consent: Vec<public::PatientConsent>,
 }
 #[derive(Debug, Clone)]
 pub struct TableData {
@@ -64,7 +47,8 @@ pub struct TableData {
     pub alert_frontdesk: Arc<RwLock<Vec<public::AlertFrontdesk>>>,
     pub alert_staff: Arc<RwLock<Vec<public::AlertStaff>>>,
     pub action_log: Arc<RwLock<Vec<public::ActionLog>>>,
-    pub equipment_request: Arc<RwLock<Vec<public::EquipmentRequest>>>
+    pub equipment_request: Arc<RwLock<Vec<public::EquipmentRequest>>>,
+    pub patient_consent: Arc<RwLock<Vec<public::PatientConsent>>>,
 }
 impl TableData {
     pub fn new() -> Self {
@@ -87,7 +71,8 @@ impl TableData {
             alert_frontdesk: Arc::new(RwLock::new(Vec::new())),
             alert_staff: Arc::new(RwLock::new(Vec::new())),
             action_log: Arc::new(RwLock::new(Vec::new())),
-            equipment_request: Arc::new(RwLock::new(Vec::new()))
+            equipment_request: Arc::new(RwLock::new(Vec::new())),
+            patient_consent: Arc::new(RwLock::new(Vec::new())),
         }
     }
     pub fn initialize(&mut self, raw_string: String) {
@@ -112,19 +97,8 @@ impl TableData {
         self.alert_staff = Arc::new(RwLock::new(raw_table.alert_staff.clone()));
         self.action_log = Arc::new(RwLock::new(raw_table.action_log.clone()));
         self.equipment_request = Arc::new(RwLock::new(raw_table.equipment_request.clone()));
+        self.patient_consent = Arc::new(RwLock::new(raw_table.patient_consent.clone()));
     }
-    //pub fn update(&self, raw_string: String, database_table: DatabaseTable) {
-    //    match serde_json::from_str::<UpdateEquipmentRow>(&raw_string) {
-    //        Ok(update_table_data) => {
-    //            let mut rows = self.equipment.write().unwrap();
-    //            //if let Some(row) = rows.iter_mut().find(|r| r.id.unwrap() == update_table_data.id as i32) {
-    //            //    *row = update_table_data.new_row_data;
-    //            //} else {
-    //            //}
-    //        },
-    //        Err(_) => todo!(),
-    //    }
-    //}
 }
 
  

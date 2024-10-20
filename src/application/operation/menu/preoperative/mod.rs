@@ -1,7 +1,10 @@
 use std::default;
 
-use crate::{application::forms::NewEquipmentRequirement, database::table::public::OperationStatus};
+use crate::{database::table::public::OperationStatus};
+use action::NewEquipmentRequirement;
 use serde::{Deserialize, Serialize};
+
+pub mod action;
 
 #[derive(Clone, Default)]
 pub struct Menu {
@@ -33,5 +36,7 @@ pub struct Init {
     pub on_site_percentage: f64,
     pub start_time: String,
     pub end_time: String,
-    pub staff_count: i64
+    pub staff_count: i64,
+
+    pub approved_consent: bool,
 }

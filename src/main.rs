@@ -6,7 +6,7 @@ use std::borrow::BorrowMut;
 use std::ops::{Deref, DerefMut};
 use std::thread;
 
-use application::forms::NewEquipmentRequirement;
+use application::operation::menu::preoperative::action::NewEquipmentRequirement;
 use application::operation::menu::{self, preoperative};
 use database::table::{
     ui_builder::BuildTable, data::TableData, join::structure::OperationSelect
@@ -192,6 +192,10 @@ impl App for OperationApp {
                                 ui.add_enabled(false, 
                                     TextEdit::singleline(&mut operation.patient_full_name.to_string())
                                 );
+                                ui.heading("APPROVED CONSENT: ");
+                                ui.add_enabled(false, 
+                                    TextEdit::singleline(&mut if operation.approved_consent { "YES".to_string() } else { "NO".to_string() })
+                                );
                             });
                         }
                     }
@@ -365,11 +369,8 @@ impl App for OperationApp {
                                     } else if let Some(selected_menu) = &menu.selected_menu {
                                         match selected_menu {
                                             application::operation::menu::preoperative::MenuOptions::ToolReady => {
-                                                println!("A");
                                                 if let Some(preoperative_tool_ready) = self.get_preoperative_tool_ready() {
-                                                    println!("B");
                                                     if let Some(data) = &mut self.data { 
-                                                        println!("C");
                                                         ui.heading("Tool Checklist");
                                                         ui.add_space(20.0);
                                                         
@@ -424,19 +425,6 @@ impl App for OperationApp {
                                 let staff = staff.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
                                 staff_response.push(staff);
                             
-                            
-                                let mut ascend_response = Vec::new();
-                                let ascend = ui.horizontal(|ui| {
-                                    ascend_response.push(ui.label(RichText::new("⏭").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                    ui.vertical(|ui| {
-                                        ascend_response.push(ui.heading(RichText::new("ASCEND").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                    });
-                                }).response;
-                                let ascend = ascend.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-                                ascend_response.push(ascend);
-        
-                                
-                                
                                 Frame::none()
                                 .rounding(Rounding::same(20.0))
                                 .fill(tool_clr)
@@ -462,6 +450,17 @@ impl App for OperationApp {
                                         };
                                     });
                                 });
+                            
+                                let mut ascend_response = Vec::new();
+                                let ascend = ui.horizontal(|ui| {
+                                    ascend_response.push(ui.label(RichText::new("⏭").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                    ui.vertical(|ui| {
+                                        ascend_response.push(ui.heading(RichText::new("ASCEND").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                    });
+                                }).response;
+                                let ascend = ascend.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+                                ascend_response.push(ascend);
+                                
         
                                 staff_response.iter().for_each(|v| {
                                     if v.clicked() {
@@ -526,7 +525,6 @@ impl App for OperationApp {
                                             tool_response.push(tool);
                                             tool_response.iter().for_each(|v: &egui::Response| {
                                                 if v.clicked() && !matches!(selected_action, Some(_)) {
-                                                    //Some(&mut preoperative::Action::AddRequirement(Some(NewEquipmentRequirement::default())));
                                                     *selected_action = Some(preoperative::Action::AddRequirement(Some(NewEquipmentRequirement::default())));
                                                 } else if v.clicked() {
                                                     *selected_action = None;

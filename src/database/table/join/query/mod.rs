@@ -13,6 +13,8 @@ impl OperationApp {
             let operation_tool = data.operation_tool.read().unwrap();
             
             let operation_staff = data.operation_staff.read().unwrap();
+            
+            let patient_consent = data.patient_consent.read().unwrap();
     
             let operation_select: Option<preoperative::Init> = operation.iter().find_map(|op| {
                 if let Some(op_id) = op.id {
@@ -23,10 +25,15 @@ impl OperationApp {
                             let op_label = op.label.clone().unwrap_or_else(|| "N/A".to_string());
                             let op_status = op.status.clone().unwrap_or_else(|| OperationStatus::Discharge);
                     
-                            let patient_full_name = patient.iter()
+                            let (patient_full_name, patient_id) = patient.iter()
                                 .find(|p| op.patient_id.map(|id| id == p.id.unwrap()).unwrap_or(false))
-                                .map(|p| format!("{} {}", p.first_name.clone().unwrap_or_else(|| "N/A".to_string()), p.last_name.clone().unwrap_or_else(|| "N/A".to_string()))) // CONCAT operation
-                                .unwrap_or_else(|| "N/A".to_string()); 
+                                .map(|p| (format!("{} {}", p.first_name.clone().unwrap_or_else(|| "N/A".to_string()), p.last_name.clone().unwrap_or_else(|| "N/A".to_string())), p.id.unwrap_or_else(|| 0))) 
+                                .unwrap_or_else(|| ("N/A".to_string(), 0)); 
+                    
+                            let patient_approved: bool = patient_consent.iter()
+                            .find(|pc| patient_id == pc.patient_id.unwrap())
+                            .map(|pc| if pc.approved.unwrap_or_else(|| 0) == 1 {true} else { false } ) 
+                            .unwrap_or_else(|| false); 
                     
                             let room_name = room.iter()
                                 .find(|r| op.room_id.map(|id| id == r.id.unwrap()).unwrap_or(false))
@@ -41,7 +48,7 @@ impl OperationApp {
                                 .filter(|ot| op_id_opt.map(|id| id == ot.operation_id.unwrap() && match ot.on_site { Some(1) => true, _ => false }).unwrap_or(false))
                                 .count() as i64;
 
-
+                            
 
                             let staff_count = operation_staff.iter()
                             .filter(|ops| op_id_opt.map(|id| id == ops.operation_id.unwrap()).unwrap_or(false))
@@ -67,7 +74,9 @@ impl OperationApp {
                                 on_site_percentage,
                                 start_time: op.start_time.clone().unwrap_or_else(|| "N/A".to_string()), 
                                 end_time: op.end_time.clone().unwrap_or_else(|| "N/A".to_string()),   
-                                staff_count
+                                staff_count,
+
+                                approved_consent: patient_approved,
                             });
                         }
                     }
