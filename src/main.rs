@@ -6,6 +6,7 @@ use std::borrow::BorrowMut;
 use std::ops::{Deref, DerefMut};
 use std::thread;
 
+use application::global::Commands;
 use application::operation::menu::preoperative::action::NewEquipmentRequirement;
 use application::operation::menu::{self, preoperative};
 use database::table::{
@@ -14,13 +15,13 @@ use database::table::{
 
 pub mod application;
 use application::{authenticate::StaffCredential, field};
-use application::{component as app_component, operation, states};
+use application::{component as app_component, global, operation, states};
 
 pub mod ws;
 use egui::{Align, Id, LayerId, Margin, Order, Rounding, ScrollArea, Sense, Style, Vec2};
 use egui::{Color32, FontId, Frame, Pos2, RichText, TextEdit};
 use egui_extras::{DatePickerButton};
-use futures::channel::mpsc::Receiver;
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 use tokio_tungstenite::tungstenite::http::response;
@@ -31,8 +32,8 @@ pub mod temporary;
 pub mod cipher;
 
 pub mod component;
-use component::design;
 
+use component::design;
 
 use chrono::{Local, NaiveDate};
 use eframe::{egui, App};
@@ -87,6 +88,8 @@ pub struct OperationApp {
     operation_id: Option<i32>,
     require_update: bool,
     operation_state: Option<application::operation::State>,
+    app_tx: Sender<Commands>,
+    app_rx: Receiver<Commands>
 }
 
 impl OperationApp {
@@ -94,6 +97,8 @@ impl OperationApp {
         
         let options = ewebsock::Options::default();
         let (sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", options).unwrap();
+
+        let (app_tx, app_rx): (Sender<global::Commands>, Receiver<global::Commands>) = mpsc::channel(10_000);
 
         OperationApp {
             data: None,
@@ -112,6 +117,8 @@ impl OperationApp {
             operation_id: None,
             require_update: false,
             operation_state: None,
+            app_tx,
+            app_rx,
         }
     }
 }
@@ -119,6 +126,24 @@ impl OperationApp {
 impl App for OperationApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_incoming();
+
+        while let Ok(sender) = &self.app_rx.try_recv() {
+            match sender {
+                Commands::Reset => {
+                    if let Some(operation_state) = &mut self.operation_state {
+                        match operation_state {
+                            operation::State::Preoperation(menu) => {
+                                menu.selected_action = None;
+                                menu.selected_menu = None;
+                            },
+                            operation::State::Intraoperation => todo!(),
+                            operation::State::Postoperation => todo!(),
+                        }
+
+                    }
+                },
+            }
+        }
 
         if let Some(id) = self.operation_id {
             self.select_operation(&id);
@@ -292,7 +317,7 @@ impl App for OperationApp {
                                     });
                                 }
                             }
-                        } else if let (Some(operation_state), Some(_), Some(data)) = (&mut self.operation_state, &self.operation_id, &self.data) {
+                        } else if let (Some(operation_state), Some(_), Some(data), app_tx) = (&mut self.operation_state, &self.operation_id, &self.data, &self.app_tx) {
                             match operation_state {
                                 application::operation::State::Preoperation(menu) => {
                                     if let Some(selected_action) = &mut menu.selected_action {
@@ -349,7 +374,7 @@ impl App for OperationApp {
                                                                         });
                                                                         ui.horizontal_wrapped(|ui| {
                                                                             if ui.button(RichText::new("SUBMIT").size(FORM_TEXT_SIZE)).clicked() {
-                                                                                println!("{:?}", s);
+                                                                                app_tx.send(Commands::Reset);
                                                                             }
                                                                         });
                                                                     });

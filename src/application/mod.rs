@@ -13,6 +13,8 @@ use crate::database::table::tree::TableTree;
 
 pub mod operation;
 
+pub mod global;
+
 pub struct RunningApp {
     pub operation_id: i32,
     pub tree: Option<TableTree>,
