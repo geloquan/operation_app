@@ -21,9 +21,8 @@ pub mod ws;
 use egui::{Align, Id, LayerId, Margin, Order, Rounding, ScrollArea, Sense, Style, Vec2};
 use egui::{Color32, FontId, Frame, Pos2, RichText, TextEdit};
 use egui_extras::{DatePickerButton};
-use tokio::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use tokio::runtime::Runtime;
-use tokio::sync::mpsc;
 use tokio_tungstenite::tungstenite::http::response;
 use ws::receive::Handle;
 
@@ -88,8 +87,8 @@ pub struct OperationApp {
     operation_id: Option<i32>,
     require_update: bool,
     operation_state: Option<application::operation::State>,
-    app_tx: Sender<Commands>,
-    app_rx: Receiver<Commands>
+    app_tx: std::sync::mpsc::Sender<Commands>,
+    app_rx: std::sync::mpsc::Receiver<Commands>
 }
 
 impl OperationApp {
@@ -98,7 +97,7 @@ impl OperationApp {
         let options = ewebsock::Options::default();
         let (sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", options).unwrap();
 
-        let (app_tx, app_rx): (Sender<global::Commands>, Receiver<global::Commands>) = mpsc::channel(10_000);
+        let (app_tx, app_rx) = std::sync::mpsc::channel();
 
         OperationApp {
             data: None,
@@ -130,9 +129,11 @@ impl App for OperationApp {
         while let Ok(sender) = &self.app_rx.try_recv() {
             match sender {
                 Commands::Reset => {
+                    println!("reset");
                     if let Some(operation_state) = &mut self.operation_state {
                         match operation_state {
                             operation::State::Preoperation(menu) => {
+                                println!("Preoperation(menu)");
                                 menu.selected_action = None;
                                 menu.selected_menu = None;
                             },
@@ -380,7 +381,6 @@ impl App for OperationApp {
                                                                     });
                                                                 });
                                                             });
-                                                        
                                                         },
                                                         Err(_) => todo!(),
                                                     }
