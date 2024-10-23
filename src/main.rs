@@ -9,6 +9,8 @@ use std::thread;
 use application::global::Commands;
 use application::operation::menu::preoperative::action::NewEquipmentRequirement;
 use application::operation::menu::{self, preoperative};
+use database::table::private::OperationAscend;
+use database::table::public::{Operation, OperationStatus};
 use database::table::{
     ui_builder::BuildTable, data::TableData, join::structure::OperationSelect
 };
@@ -95,7 +97,7 @@ impl OperationApp {
     fn new(_: &eframe::CreationContext<'_>) -> Self {
         
         let options = ewebsock::Options::default();
-        let (sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", options).unwrap();
+        let (sender, receiver) = ewebsock::connect("ws://192.168.1.4:8080", options).unwrap();
 
         let (app_tx, app_rx) = std::sync::mpsc::channel();
 
@@ -137,7 +139,10 @@ impl App for OperationApp {
                                 menu.selected_action = None;
                                 menu.selected_menu = None;
                             },
-                            operation::State::Intraoperation => todo!(),
+                            operation::State::Intraoperation(menu) => {
+                                menu.selected_action = None;
+                                menu.selected_menu = None;
+                            },
                             operation::State::Postoperation => todo!(),
                         }
 
@@ -415,7 +420,7 @@ impl App for OperationApp {
                                     
                                     }
                                 },
-                                application::operation::State::Intraoperation => todo!(),
+                                application::operation::State::Intraoperation(_) => {},
                                 application::operation::State::Postoperation => todo!(),
                             }           
                         } 
@@ -423,7 +428,7 @@ impl App for OperationApp {
                 } 
             });
             egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-                if let (Some(operation), Some(operation_state)) = (&mut self.get_selected_preoperation(), &mut self.operation_state) {
+                if let (Some(operation), Some(operation_state), operation_id, sender, staff_credential) = (&mut self.get_selected_preoperation(), &mut self.operation_state, &self.operation_id, &mut self.sender, &self.staff) {
                     match operation_state {
                         application::operation::State::Preoperation(menu) => {
                             Frame::none()
@@ -472,32 +477,52 @@ impl App for OperationApp {
                                         };
                                     });
                                 });
-                            
-                                let mut ascend_response = Vec::new();
-                                let ascend = ui.horizontal(|ui| {
-                                    ascend_response.push(ui.label(RichText::new("⏭").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                    ui.vertical(|ui| {
-                                        ascend_response.push(ui.heading(RichText::new("ASCEND").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                    });
-                                }).response;
-                                let ascend = ascend.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-                                ascend_response.push(ascend);
                                 
+                                Frame::none()
+                                .rounding(Rounding::same(20.0))
+                                .fill(tool_clr)
+                                .inner_margin(Margin::same(20.0))
+                                .show(ui, |ui| {
+                                    let mut ascend_response = Vec::new();
+                                    let ascend = ui.horizontal(|ui| {
+                                        ascend_response.push(ui.label(RichText::new("⏭").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                        ui.vertical(|ui| {
+                                            ascend_response.push(ui.heading(RichText::new("ASCEND").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                                        });
+                                    }).response;
+                                    let ascend = ascend.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+                                    ascend_response.push(ascend);
+
+                                    ascend_response.iter().for_each(|v| {
+                                        if v.clicked() {
+                                            if let Some(operation_id) = &operation_id {
+                                                let operation_ascend = OperationAscend {
+                                                    operation_id: *operation_id,
+                                                    operation_status: OperationStatus::PreOperative,
+                                                    staff_credential: staff_credential.clone().unwrap(),
+                                                };
+                                                let request_json = serde_json::to_string(&SendMessage {
+                                                    level: "Operation".to_string(),
+                                                    method: "Ascend".to_string(),
+                                                    data: Some(serde_json::to_value(&operation_ascend).unwrap()),
+                                                    staff_credential: staff_credential.clone(),
+                                                    action: None
+                                                }).unwrap();
+                                                sender.send(ewebsock::WsMessage::Text(request_json.to_string()));
+                                            };
+                                        };
+                                    });
+                                });
         
                                 staff_response.iter().for_each(|v| {
                                     if v.clicked() {
                                         println!("hello staff!");
                                     };
                                 });
-                                ascend_response.iter().for_each(|v| {
-                                    if v.clicked() {
-                                        println!("hello ascend!");
-                                    };
-                                });
                                 
                             });
                         },
-                        application::operation::State::Intraoperation => todo!(),
+                        application::operation::State::Intraoperation(_) => {},
                         application::operation::State::Postoperation => todo!(),
                     }
                 
@@ -523,7 +548,20 @@ impl App for OperationApp {
                                 }
                             });
                         },
-                        operation::State::Intraoperation => todo!(),
+                        operation::State::Intraoperation(menu) => {
+                            Frame::none()
+                            .inner_margin(Margin::same(10.))
+                            .show(ui, |ui| {
+                                match menu.selected_menu {
+                                    Some(_) => {
+                                        ui.heading("actions");
+                                    },
+                                    None => {
+                                        ui.heading("select menu to show actions");
+                                    },
+                                }
+                            });
+                        },
                         operation::State::Postoperation => todo!(),
                     }
                     match operation_state {
@@ -556,7 +594,7 @@ impl App for OperationApp {
                             }
                         
                         },
-                        operation::State::Intraoperation => todo!(),
+                        operation::State::Intraoperation(_) => {},
                         operation::State::Postoperation => todo!(),
                     }
                 });

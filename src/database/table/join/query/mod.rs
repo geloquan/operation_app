@@ -23,7 +23,7 @@ impl OperationApp {
                             let op_id = op_id;
                             let op_id_opt = Some(op_id);
                             let op_label = op.label.clone().unwrap_or_else(|| "N/A".to_string());
-                            let op_status = op.status.clone().unwrap_or_else(|| OperationStatus::Discharge);
+                            let op_status = op.status.clone().unwrap_or_else(|| OperationStatus::PostOperative);
                     
                             let (patient_full_name, patient_id) = patient.iter()
                                 .find(|p| op.patient_id.map(|id| id == p.id.unwrap()).unwrap_or(false))

@@ -1,7 +1,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use crate::{application::authenticate::StaffCredential, cipher::{decrypt_message, generate_fixed_key, EncryptedText}, component::design, database::{table::{data::TableData}}, ws::process::Update, OperationApp, SendMessage};
+use crate::{application::{authenticate::StaffCredential, operation::menu::intraoperative::Menu}, cipher::{decrypt_message, generate_fixed_key, EncryptedText}, component::design, database::table::{data::TableData, private}, ws::process::Update, OperationApp, SendMessage};
 
 
 #[derive(Deserialize, Debug, Serialize, Clone, Copy)]
@@ -30,7 +30,8 @@ pub enum TableTarget {
 pub enum Operation {
     Initialize,
     Update,
-    AuthHandshake
+    AuthHandshake,
+    Ascend,
 }
 #[derive(Deserialize, Debug, Serialize)]
 pub struct ReceiveMessage {
@@ -89,6 +90,26 @@ impl Handle for OperationApp {
                                                                 self.credential_panel.state = design::State::Error 
                                                             }
                                                         }
+                                                        Operation::Ascend => {
+                                                            println!("message: {:?}", message);
+                                                            if let Ok(operation_ascend) = serde_json::from_str::<private::OperationAscend>(&message.data) {
+                                                                self.require_update = true;
+                                                                if let (Some(operation_state), Some(operation_id)) = (&mut self.operation_state, &self.operation_id) {
+                                                                    if operation_ascend.operation_id == operation_id.to_owned() {
+                                                                        match operation_state {
+                                                                            crate::application::operation::State::Preoperation(_) => *operation_state = crate::application::operation::State::Intraoperation(
+                                                                                Menu {
+                                                                                    selected_action: None,
+                                                                                    selected_menu: None
+                                                                                }
+                                                                            ),
+                                                                            crate::application::operation::State::Intraoperation(_) => *operation_state = crate::application::operation::State::Postoperation,
+                                                                            crate::application::operation::State::Postoperation => todo!(),
+                                                                        } 
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
                                                     }
                                                 },
                                                 Err(_) => {

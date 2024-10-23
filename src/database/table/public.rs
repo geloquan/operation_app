@@ -32,19 +32,15 @@ pub enum RoomPurpose {
 #[derive(Clone, Debug, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum OperationStatus {
     PreOperative,
-    InProgress,
+    IntraOperative,
     PostOperative,
-    Recovery,
-    Discharge,
 }
 impl fmt::Display for OperationStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let status_str = match self {
             OperationStatus::PreOperative => "Pre-Operative",
-            OperationStatus::InProgress => "In Progress",
+            OperationStatus::IntraOperative => "Intra-operative",
             OperationStatus::PostOperative => "Post-Operative",
-            OperationStatus::Recovery => "Recovery",
-            OperationStatus::Discharge => "Discharge",
         };
         write!(f, "{}", status_str)
     }
