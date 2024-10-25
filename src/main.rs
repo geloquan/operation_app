@@ -2,31 +2,44 @@ mod database;
 
 mod action;
 
-use std::borrow::BorrowMut;
-use std::ops::{Deref, DerefMut};
-use std::thread;
-
 use application::global::Commands;
-use application::operation::menu::preoperative::action::NewEquipmentRequirement;
-use application::operation::menu::{self, preoperative};
-use database::table::private::OperationAscend;
-use database::table::public::{Operation, OperationStatus};
 use database::table::{
-    ui_builder::BuildTable, data::TableData, join::structure::OperationSelect
+    ui_builder::BuildTable, 
+    data::TableData, 
+    join::structure::OperationSelect
 };
 
 pub mod application;
-use application::{authenticate::StaffCredential, field};
-use application::{component as app_component, global, operation, states};
+use application::{
+    authenticate::StaffCredential, 
+    field
+};
+use application::{
+    component as app_component, 
+    operation, 
+    states
+};
 
 pub mod ws;
-use egui::{Align, Id, LayerId, Margin, Order, Rounding, ScrollArea, Sense, Style, Vec2};
-use egui::{Color32, FontId, Frame, Pos2, RichText, TextEdit};
-use egui_extras::{DatePickerButton};
-use std::sync::mpsc::{channel, Receiver, Sender};
-use tokio::runtime::Runtime;
-use tokio_tungstenite::tungstenite::http::response;
+use egui::{
+    Margin, 
+    ScrollArea
+};
+use egui::{
+    Color32, 
+    FontId, 
+    Frame, 
+    RichText, 
+    TextEdit
+};
 use ws::receive::Handle;
+
+use application::states::preoperative::menu::action as PreoperativeMenuAction;
+use application::operation::menu::preoperative::Action as PreoperativeActions;
+use application::operation::menu::preoperative::MenuOptions as PreoperativeMenuActionOptions;
+
+use application::operation::State as OperationStates;
+use application::states::preoperative::menu as PreoperativeMenu;
 
 pub mod temporary;
 
@@ -36,10 +49,20 @@ pub mod component;
 
 use component::design;
 
-use chrono::{Local, NaiveDate};
-use eframe::{egui, App};
-use ewebsock::{self, WsReceiver, WsSender};
-use serde::{Deserialize, Serialize};
+use chrono::Local;
+use eframe::{
+    egui, 
+    App
+};
+use ewebsock::{
+    self, 
+    WsReceiver, 
+    WsSender
+};
+use serde::{
+    Deserialize, 
+    Serialize
+};
 #[derive(Deserialize, Debug, Serialize)]
 struct SendMessage {
     level: String,
@@ -97,7 +120,7 @@ impl OperationApp {
     fn new(_: &eframe::CreationContext<'_>) -> Self {
         
         let options = ewebsock::Options::default();
-        let (sender, receiver) = ewebsock::connect("ws://192.168.1.4:8080", options).unwrap();
+        let (sender, receiver) = ewebsock::connect("ws://192.168.1.2:8080", options).unwrap();
 
         let (app_tx, app_rx) = std::sync::mpsc::channel();
 
@@ -325,103 +348,27 @@ impl App for OperationApp {
                             }
                         } else if let (Some(operation_state), Some(_), Some(data), app_tx) = (&mut self.operation_state, &self.operation_id, &self.data, &self.app_tx) {
                             match operation_state {
-                                application::operation::State::Preoperation(menu) => {
+                                OperationStates::Preoperation(menu) => {
                                     if let Some(selected_action) = &mut menu.selected_action {
                                         ui.heading("New Requirement Form");
                                         ui.add_space(20.0);
                                         match selected_action {
-                                            application::operation::menu::preoperative::Action::AddRequirement(s) => {
-                                                if let Some(s) = s {
-                                                    match data.equipment.read() {
-                                                        Ok(equipments) => {
-                                                            Frame::none()
-                                                            .rounding(20.0)
-                                                            .inner_margin(20.0)
-                                                            .show(ui, |ui| {
-                                                                ui.columns(1, |columns| {
-                                                                    columns[0].vertical_centered(|ui| {
-                                                                        ui.set_width(150.0);
-                                                                        ui.horizontal_wrapped(|ui| {
-                                                                            ui.push_id("select", |ui| {
-                                                                                ui.heading(RichText::new("Select: ").size(FORM_TEXT_SIZE));
-                                                                                ui.separator();
-                                                                                egui::ComboBox::from_label("")
-                                                                                .selected_text(&s.name) 
-                                                                                .show_ui(ui, |ui| {
-                                                                                    for equipment in equipments.iter() {
-                                                                                        if let Some(name) = &equipment.name {
-                                                                                            ui.selectable_value(&mut s.name, name.clone(), name.clone());
-                                                                                        }
-                                                                                    }
-                                                                                });
-                                                                            });
-                                                                        });
-                                                                        ui.horizontal_wrapped(|ui| {
-                                                                            ui.label(RichText::new("On Site: ").size(FORM_TEXT_SIZE));
-                                                                            ui.separator();
-                                                                            let mut style: Style = (*ctx.style()).clone();
-                                                                            style.spacing.icon_width = 32.0;
-                                                                            style.spacing.icon_spacing = 16.0;
-                                                                            ctx.set_style(style);
-                                                                            ui.checkbox(&mut s.on_site, "");
-                                                                        });
-                                                                        ui.horizontal_wrapped(|ui| {
-                                                                            ui.push_id("qty", |ui| {
-                                                                                ui.label(RichText::new("Quantity: ").size(FORM_TEXT_SIZE));
-                                                                                ui.separator();
-                                                                                egui::ComboBox::from_label("")
-                                                                                .selected_text(s.quantity.to_string())
-                                                                                .show_ui(ui, |ui| {
-                                                                                    for i in 1..=99 {
-                                                                                        ui.selectable_value(&mut s.quantity, i, i.to_string());
-                                                                                    }
-                                                                                });
-                                                                            });
-                                                                        });
-                                                                        ui.horizontal_wrapped(|ui| {
-                                                                            if ui.button(RichText::new("SUBMIT").size(FORM_TEXT_SIZE)).clicked() {
-                                                                                app_tx.send(Commands::Reset);
-                                                                            }
-                                                                        });
-                                                                    });
-                                                                });
-                                                            });
-                                                        },
-                                                        Err(_) => todo!(),
-                                                    }
-                                                }
-                                            },
-                                            menu::preoperative::Action::AddRequirement(new_equipment_requirement) => todo!(),
-                                        }     
+                                            PreoperativeActions::AddRequirement(s) => {
+                                                PreoperativeMenuAction::add_requirement_area(s, data, ui, ctx, app_tx);
+                                            }
+                                        }
                                     } else if let Some(selected_menu) = &menu.selected_menu {
                                         match selected_menu {
-                                            application::operation::menu::preoperative::MenuOptions::ToolReady => {
-                                                if let Some(preoperative_tool_ready) = self.get_preoperative_tool_ready() {
-                                                    if let Some(data) = &mut self.data { 
-                                                        ui.heading("Tool Checklist");
-                                                        ui.add_space(20.0);
-                                                        
-                                                        Frame::none()
-                                                        .fill(FORM_BACKGROUND)
-                                                        .rounding(20.0)
-                                                        .inner_margin(20.0)
-                                                        .show(ui, |ui| {
-                                                            ui.columns(1, |columns| {
-                                                                columns[0].vertical_centered(|ui| {
-                                                                    self.build_table(ui, database::table::window::WindowTable::PreOperativeToolReady(Some(preoperative_tool_ready.clone())));
-                                                                });
-                                                            });
-                                                        });
-                                                    }
-                                                }
+                                            PreoperativeMenuActionOptions::ToolReady => {
+                                                PreoperativeMenuAction::tool_checklist_area(self, ui);
                                             },
-                                            application::operation::menu::preoperative::MenuOptions::Staff => todo!(),
+                                            PreoperativeMenuActionOptions::Staff => todo!(),
                                         }
                                     
                                     }
                                 },
-                                application::operation::State::Intraoperation(_) => {},
-                                application::operation::State::Postoperation => todo!(),
+                                OperationStates::Intraoperation(_) => {},
+                                OperationStates::Postoperation => todo!(),
                             }           
                         } 
                     });
@@ -430,100 +377,11 @@ impl App for OperationApp {
             egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
                 if let (Some(operation), Some(operation_state), operation_id, sender, staff_credential) = (&mut self.get_selected_preoperation(), &mut self.operation_state, &self.operation_id, &mut self.sender, &self.staff) {
                     match operation_state {
-                        application::operation::State::Preoperation(menu) => {
-                            Frame::none()
-                            .inner_margin(Margin::same(10.))
-                            .show(ui, |ui| {
-                                    ui.horizontal(|ui| ui.heading("options:"));
-                                });
-                            ui.horizontal_centered(|ui| {
-                                let staff_clr: Color32 = Color32::default();
-                                let mut tool_clr: Color32 = Color32::default();
-                                let ascend_clr: Color32 = Color32::default();
-                                
-                                let mut staff_response = Vec::new();
-                                let staff = ui.horizontal(|ui| {
-                                    staff_response.push(ui.label(RichText::new("👷").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                    ui.vertical(|ui| {
-                                        staff_response.push(ui.heading(RichText::new("STAFF").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                        staff_response.push(ui.label(RichText::new(operation.staff_count.to_string()).size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                    });
-                                }).response;
-                                let staff = staff.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-                                staff_response.push(staff);
-                            
-                                Frame::none()
-                                .rounding(Rounding::same(20.0))
-                                .fill(tool_clr)
-                                .inner_margin(Margin::same(20.0))
-                                .show(ui, |ui| {
-                                    let mut tool_response = Vec::new();
-                                    let tool = ui.horizontal(|ui| {
-                                        tool_response.push(ui.label(RichText::new("⚒").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                        ui.vertical(|ui| {
-                                            tool_response.push(ui.heading(RichText::new("TOOLS").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                            tool_response.push(ui.label(RichText::new(format!("{:?} / {:?}", operation.on_site_tools, operation.total_tools)).size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                        });
-                                    }).response;
-                                    let tool = tool.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-                                    tool_response.push(tool);
-                
-                                    tool_response.iter().for_each(|v| {
-                                        if v.clicked() && menu.selected_menu != Some(operation::menu::preoperative::MenuOptions::ToolReady) {
-                                            menu.selected_menu = Some(operation::menu::preoperative::MenuOptions::ToolReady);
-                                        } else if v.clicked() {
-                                            menu.selected_menu = None;
-                                            menu.selected_action = None;
-                                        };
-                                    });
-                                });
-                                
-                                Frame::none()
-                                .rounding(Rounding::same(20.0))
-                                .fill(tool_clr)
-                                .inner_margin(Margin::same(20.0))
-                                .show(ui, |ui| {
-                                    let mut ascend_response = Vec::new();
-                                    let ascend = ui.horizontal(|ui| {
-                                        ascend_response.push(ui.label(RichText::new("⏭").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                        ui.vertical(|ui| {
-                                            ascend_response.push(ui.heading(RichText::new("ASCEND").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                        });
-                                    }).response;
-                                    let ascend = ascend.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-                                    ascend_response.push(ascend);
-
-                                    ascend_response.iter().for_each(|v| {
-                                        if v.clicked() {
-                                            if let Some(operation_id) = &operation_id {
-                                                let operation_ascend = OperationAscend {
-                                                    operation_id: *operation_id,
-                                                    operation_status: OperationStatus::PreOperative,
-                                                    staff_credential: staff_credential.clone().unwrap(),
-                                                };
-                                                let request_json = serde_json::to_string(&SendMessage {
-                                                    level: "Operation".to_string(),
-                                                    method: "Ascend".to_string(),
-                                                    data: Some(serde_json::to_value(&operation_ascend).unwrap()),
-                                                    staff_credential: staff_credential.clone(),
-                                                    action: None
-                                                }).unwrap();
-                                                sender.send(ewebsock::WsMessage::Text(request_json.to_string()));
-                                            };
-                                        };
-                                    });
-                                });
-        
-                                staff_response.iter().for_each(|v| {
-                                    if v.clicked() {
-                                        println!("hello staff!");
-                                    };
-                                });
-                                
-                            });
+                        OperationStates::Preoperation(menu) => {
+                            PreoperativeMenu::init(ui, menu, operation, operation_id, sender, staff_credential);
                         },
-                        application::operation::State::Intraoperation(_) => {},
-                        application::operation::State::Postoperation => todo!(),
+                        OperationStates::Intraoperation(_) => {},
+                        OperationStates::Postoperation => todo!(),
                     }
                 
                 }
@@ -532,63 +390,13 @@ impl App for OperationApp {
 
             if let Some(operation_state) = &mut self.operation_state {
                 egui::TopBottomPanel::bottom("bottome").show(ctx, |ui| {
-                    
-                    match operation_state {
-                        operation::State::Preoperation(menu) => {
-                            Frame::none()
-                            .inner_margin(Margin::same(10.))
-                            .show(ui, |ui| {
-                                match menu.selected_menu {
-                                    Some(_) => {
-                                        ui.heading("actions");
-                                    },
-                                    None => {
-                                        ui.heading("select menu to show actions");
-                                    },
-                                }
-                            });
-                        },
-                        operation::State::Intraoperation(menu) => {
-                            Frame::none()
-                            .inner_margin(Margin::same(10.))
-                            .show(ui, |ui| {
-                                match menu.selected_menu {
-                                    Some(_) => {
-                                        ui.heading("actions");
-                                    },
-                                    None => {
-                                        ui.heading("select menu to show actions");
-                                    },
-                                }
-                            });
-                        },
-                        operation::State::Postoperation => todo!(),
-                    }
                     match operation_state {
                         operation::State::Preoperation(menu) => {
                             if let (Some(selected_menu), selected_action) = (menu.selected_menu.as_mut(), &mut menu.selected_action) {
                                 match selected_menu {
-                                    menu::preoperative::MenuOptions::Staff => todo!(),
-                                    menu::preoperative::MenuOptions::ToolReady => {
-                                        let _ = Frame::none()
-                                        .inner_margin(Margin::same(20.0))
-                                        .show(ui, |ui| {
-                                            let mut tool_response = Vec::new();
-                                            let first_tool = ui.horizontal(|ui| {
-                                                tool_response.push(ui.label(RichText::new("⊞").size(40.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                                tool_response.push(ui.heading(RichText::new("add new requirement").size(20.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                                            }).response;
-                                
-                                            let tool = first_tool.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-                                            tool_response.push(tool);
-                                            tool_response.iter().for_each(|v: &egui::Response| {
-                                                if v.clicked() && !matches!(selected_action, Some(_)) {
-                                                    *selected_action = Some(preoperative::Action::AddRequirement(Some(NewEquipmentRequirement::default())));
-                                                } else if v.clicked() {
-                                                    *selected_action = None;
-                                                };
-                                            });
-                                        });
+                                    PreoperativeMenuActionOptions::Staff => todo!(),
+                                    PreoperativeMenuActionOptions::ToolReady => {
+                                        PreoperativeMenuAction::add_tool_requirement_area(ui, selected_action);
                                     },
                                 }
                             }

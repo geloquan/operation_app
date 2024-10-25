@@ -2,7 +2,7 @@ use crate::component::design;
 
 use super::field;
 
-mod preoperative;
+pub(crate) mod preoperative;
 
 pub struct Login {
     pub field: field::Login,
