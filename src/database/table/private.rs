@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::application::authenticate::StaffCredential;
 
-use super::public::OperationStatus;
+use super::public::{OperationStatus, StaffRole};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StaffAuthGrant {

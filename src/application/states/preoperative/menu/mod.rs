@@ -1,7 +1,23 @@
 use egui::{Color32, Frame, Margin, RichText, Rounding};
 use ewebsock::WsSender;
 
-use crate::{application::{authenticate::StaffCredential, operation::{self, menu::preoperative::{Init, Menu}}}, database::table::{private::OperationAscend, public::OperationStatus}, SendMessage};
+use crate::{
+    application::{
+        authenticate::StaffCredential, 
+        operation::{
+            self, 
+            menu::preoperative::{
+                Init, 
+                Menu
+            }
+        }
+    }, 
+    database::table::{
+        private::OperationAscend, 
+        public::OperationStatus
+    }, 
+    SendMessage
+};
 
 pub mod action;
 
@@ -23,17 +39,33 @@ pub fn init(
         let mut tool_clr: Color32 = Color32::default();
         let ascend_clr: Color32 = Color32::default();
         
-        let mut staff_response = Vec::new();
-        let staff = ui.horizontal(|ui| {
-            staff_response.push(ui.label(RichText::new("👷").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-            ui.vertical(|ui| {
-                let rich_text = RichText::new("STAFF");
-                staff_response.push(ui.heading(rich_text.size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
-                staff_response.push(ui.label(RichText::new(operation.staff_count.to_string()).size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+        
+        Frame::none()
+        .rounding(Rounding::same(20.0))
+        .fill(tool_clr)
+        .inner_margin(Margin::same(20.0))
+        .show(ui, |ui| {
+            let mut staff_response = Vec::new();
+            let staff = ui.horizontal(|ui| {
+                staff_response.push(ui.label(RichText::new("👷").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                ui.vertical(|ui| {
+                    let rich_text = RichText::new("STAFF");
+                    staff_response.push(ui.heading(rich_text.size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                    staff_response.push(ui.label(RichText::new(operation.staff_count.to_string()).size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                });
+            }).response;
+            let staff = staff.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+            staff_response.push(staff);
+
+            staff_response.iter().for_each(|v| {
+                if v.clicked() && menu.selected_menu != Some(operation::menu::preoperative::MenuOptions::Staff) {
+                    menu.selected_menu = Some(operation::menu::preoperative::MenuOptions::Staff);
+                } else if v.clicked() {
+                    menu.selected_menu = None;
+                    menu.selected_action = None;
+                };
             });
-        }).response;
-        let staff = staff.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-        staff_response.push(staff);
+        });
     
         Frame::none()
         .rounding(Rounding::same(20.0))
@@ -97,10 +129,5 @@ pub fn init(
             });
         });
 
-        staff_response.iter().for_each(|v| {
-            if v.clicked() {
-                println!("hello staff!");
-            };
-        });
     });
 }

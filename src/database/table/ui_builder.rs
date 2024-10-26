@@ -1,4 +1,4 @@
-use egui::{Label, Sense, Ui};
+use egui::{Label, Sense, Ui, Window};
 use egui_extras::{TableBuilder, Column};
 
 use super::private::OperationToolOnSiteToggle;
@@ -128,7 +128,48 @@ impl BuildTable for OperationApp {
                         });
                     }
                 });
-            
+            } else if let WindowTable::PreoperativeStaffList(Some(staff_list)) = &window_table {
+                let tbl = TableBuilder::new(ui)
+                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
+                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
+                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
+                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
+                .auto_shrink(true)
+                .striped(true)
+                .max_scroll_height(300.0)
+                .header(20.0, |mut header| {
+                    let headings = [
+                        "Name",
+                        "Email",
+                        "Phone",
+                        "Role",
+                    ];                
+                    for title in headings {
+                        header.col(|ui| {
+                            ui.horizontal_centered(|ui|{
+                                ui.heading(title);
+                            });
+                        });
+                    }
+                })
+                .body(|mut body| {
+                    for content in staff_list {
+                        body.row(30.0, |mut row| {
+                            row.col(|ui: &mut Ui| {
+                                ui.add(Label::new(content.full_name.clone()));
+                            });
+                            row.col(|ui: &mut Ui| {
+                                ui.add(Label::new(content.email.clone()));
+                            });
+                            row.col(|ui: &mut Ui| {
+                                ui.add(Label::new(content.phone.clone()));
+                            });
+                            row.col(|ui: &mut Ui| {
+                                ui.add(Label::new(content.role.clone().to_string()));
+                            });
+                        });
+                    }
+                });
             };
             table_return
         });

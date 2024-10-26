@@ -55,6 +55,36 @@ pub enum StaffRole {
     Therapist,
     Physician,
     Maintenance,
+    Anesthesiologist,
+    SurgicalTechnologist, 
+    GeneralSurgeon,
+    CardiothoracicSurgeon,
+    OrthopedicSurgeon,
+    Neurosurgeon,
+    Urologist,
+    Gynecologist
+}
+impl fmt::Display for StaffRole {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let role_str = match self {
+            StaffRole::Nurse => "Nurse".to_string(),
+            StaffRole::Technician => "Technician".to_string(),
+            StaffRole::Pharmacist => "Pharmacist".to_string(),
+            StaffRole::Dietitian => "Dietitian".to_string(),
+            StaffRole::Therapist => "Therapist".to_string(),
+            StaffRole::Physician => "Physician".to_string(),
+            StaffRole::Maintenance => "Maintenance".to_string(),
+            StaffRole::Anesthesiologist => "Anesthesiologist".to_string(),
+            StaffRole::SurgicalTechnologist => "Surgical Technologist".to_string(),
+            StaffRole::GeneralSurgeon => "General Surgeon".to_string(),
+            StaffRole::CardiothoracicSurgeon => "Cardiothoracic Surgeon".to_string(),
+            StaffRole::OrthopedicSurgeon => "Orthopedic Surgeon".to_string(),
+            StaffRole::Neurosurgeon => "Neurosurgeon".to_string(),
+            StaffRole::Urologist => "Urologist".to_string(),
+            StaffRole::Gynecologist => "Gynecologist".to_string(),
+        };
+        write!(f, "{}", role_str)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Deserialize, Serialize)]

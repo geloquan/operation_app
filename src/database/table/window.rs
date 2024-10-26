@@ -1,8 +1,9 @@
-use super::join::structure::{OperationSelect, PreOperativeToolReady};
+use super::join::structure::{OperationSelect, OperationStaffProperty, PreOperativeToolReady};
 
 
 #[derive(Debug, Clone)]
 pub enum WindowTable {
     OperationSelect(Option<Vec<OperationSelect>>),
-    PreOperativeToolReady(Option<Vec<PreOperativeToolReady>>)
+    PreOperativeToolReady(Option<Vec<PreOperativeToolReady>>),
+    PreoperativeStaffList(Option<Vec<OperationStaffProperty>>)
 }

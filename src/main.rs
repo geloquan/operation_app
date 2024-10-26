@@ -308,7 +308,6 @@ impl App for OperationApp {
                                 ui.separator();
                             }
                         }
-                    
                     });
                 });
             });
@@ -362,7 +361,9 @@ impl App for OperationApp {
                                             PreoperativeMenuActionOptions::ToolReady => {
                                                 PreoperativeMenuAction::tool_checklist_area(self, ui);
                                             },
-                                            PreoperativeMenuActionOptions::Staff => todo!(),
+                                            PreoperativeMenuActionOptions::Staff => {
+                                                PreoperativeMenuAction::staff_list_area(self, ui);
+                                            },
                                         }
                                     
                                     }
@@ -394,7 +395,9 @@ impl App for OperationApp {
                         operation::State::Preoperation(menu) => {
                             if let (Some(selected_menu), selected_action) = (menu.selected_menu.as_mut(), &mut menu.selected_action) {
                                 match selected_menu {
-                                    PreoperativeMenuActionOptions::Staff => todo!(),
+                                    PreoperativeMenuActionOptions::Staff => {
+                                        
+                                    },
                                     PreoperativeMenuActionOptions::ToolReady => {
                                         PreoperativeMenuAction::add_tool_requirement_area(ui, selected_action);
                                     },

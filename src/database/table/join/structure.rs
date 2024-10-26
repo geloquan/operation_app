@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::database::table::{public::{EquipmentStatus, OperationStatus}};
+use crate::database::table::public::{EquipmentStatus, OperationStatus, StaffRole};
 
 #[derive(Deserialize, Debug, Serialize, Default, Clone)]
 pub struct OperationSelect {
@@ -27,4 +27,12 @@ pub struct ActionLogProperty {
     pub before_val: String,
     pub after_val: String,
     pub date: String,
+}
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct OperationStaffProperty {
+    pub staff_id: i32,
+    pub full_name: String,
+    pub email: String,
+    pub phone: String,
+    pub role: StaffRole,
 }

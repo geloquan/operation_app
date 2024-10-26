@@ -12,11 +12,11 @@ use egui::{
 use crate::{
     application::{
         global::Commands, 
-        operation::menu::preoperative::{
+        operation::{self, menu::preoperative::{
             self, 
             action::NewEquipmentRequirement, 
             Action
-        }
+        }}
     }, 
     database::{
         self, 
@@ -85,7 +85,10 @@ pub fn add_requirement_area(
                                 });
                             });
                             ui.horizontal_wrapped(|ui| {
-                                if ui.button(RichText::new("SUBMIT").size(FORM_TEXT_SIZE)).clicked() {
+                                if ui.button(RichText::new("SUBMIT").size(FORM_TEXT_SIZE)).clicked() &&
+                                s.name != "" &&
+                                s.quantity != 0
+                                {
                                     app_tx.send(Commands::Reset);
                                 }
                             });
@@ -119,6 +122,24 @@ pub fn tool_checklist_area(
                 });
             });
         }
+    }
+}
+pub fn staff_list_area(
+    app: &mut OperationApp,
+    ui: &mut Ui,
+) {
+    if let Some(operation_staff_property) = app.get_staff_list() {
+        Frame::none()
+        .fill(FORM_BACKGROUND)
+        .rounding(20.0)
+        .inner_margin(20.0)
+        .show(ui, |ui| {
+            ui.columns(1, |columns| {
+                columns[0].vertical_centered(|ui| {
+                    app.build_table(ui, database::table::window::WindowTable::PreoperativeStaffList(Some(operation_staff_property.clone())));
+                });
+            });
+        });
     }
 }
 

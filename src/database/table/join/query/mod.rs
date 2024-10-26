@@ -1,6 +1,5 @@
-use super::structure::{ActionLogProperty, OperationSelect, PreOperativeToolReady};
+use super::structure::{ActionLogProperty, OperationSelect, OperationStaffProperty, PreOperativeToolReady};
 use crate::{application::operation::menu::preoperative, database::table::{self, public::{ActionLog, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
-
 impl OperationApp {
     pub fn select_operation(&mut self, id: &i32) {
         self.operation_id = Some(*id);
@@ -147,8 +146,7 @@ impl OperationApp {
         } 
     }
 
-    pub fn get_preoperative_tool_ready(&mut self) -> Option<Vec<PreOperativeToolReady>> {
-        
+    pub fn get_preoperative_tool_ready(&self) -> Option<Vec<PreOperativeToolReady>> {
         if let (Some(data), Some(operation_id)) = (&self.data, &self.operation_id) {
             
             let operation_tools = data.operation_tool.read().unwrap();
@@ -192,7 +190,56 @@ impl OperationApp {
     
     }
 
-    pub fn get_action_log_operation(&mut self) -> Option<Vec<ActionLogProperty>> {
+    pub fn get_staff_list(&self) -> Option<Vec<OperationStaffProperty>> {
+        if let (Some(data), Some(operation_id)) = (&self.data, &self.operation_id) {
+            let operation_staff = data.operation_staff.read().unwrap();
+            let staff = data.staff.read().unwrap();
+
+            {
+                println!("operation_staff {:?}", operation_staff);
+            }
+            {
+                println!("staffstaff {:?}", staff);
+            }
+            
+            let operation_staffs: Option<Vec<OperationStaffProperty>> = Some(
+                operation_staff.iter()
+                .filter_map(|ops| {
+                    if let (Some(ops_operation_id), Some(staff_id)) = (ops.operation_id, ops.staff_id) {
+                        if ops_operation_id == *operation_id {
+                            staff
+                                .iter()
+                                .find(|s| s.id == Some(staff_id))
+                                .map(|s| OperationStaffProperty {
+                                    staff_id,
+                                    full_name: format!(
+                                        "{} {}",
+                                        s.first_name.clone().unwrap_or_else(|| "N/A".to_string()),
+                                        s.last_name.clone().unwrap_or_else(|| "N/A".to_string())
+                                    ),
+                                    email: s.email.clone().unwrap_or_else(|| "N/A".to_string()),
+                                    phone: s.phone.clone().unwrap_or_else(|| "N/A".to_string()),
+                                    role: s.role.clone().unwrap(),
+                                })
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+            );
+
+            println!("operation staffs {:?}", operation_staffs);
+            operation_staffs
+            
+        } else {
+            None
+        }
+    }
+    
+    pub fn get_action_log_operation(&self) -> Option<Vec<ActionLogProperty>> {
         if let Some(ref data) = self.data {
             let staff = data.staff.read().unwrap();
             let action_log = data.action_log.read().unwrap();
