@@ -1,7 +1,7 @@
 use std::default;
 
 use crate::{database::table::public::OperationStatus};
-use action::NewEquipmentRequirement;
+use action::{NewEquipmentRequirement, RemoveEquipmentRequirement};
 use serde::{Deserialize, Serialize};
 
 pub mod action;
@@ -13,14 +13,17 @@ pub struct Menu {
 }
 
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum MenuOptions {
     Staff,
     ToolReady,
 }
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum Action {
-    AddRequirement(Option<NewEquipmentRequirement>)
+    AddRequirement(Option<NewEquipmentRequirement>),
+    RemoveRequirement(Option<RemoveEquipmentRequirement>),
+    AddStaffRole,
+    RemoveStaffRole,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

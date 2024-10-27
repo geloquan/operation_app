@@ -8,26 +8,20 @@ use egui::{
     Style, 
     Ui
 };
+use egui_extras::{Column, TableBuilder};
 
 use crate::{
-    application::{
-        global::Commands, 
-        operation::{self, menu::preoperative::{
+    action::{Actions, Preoperation}, application::operation::menu::preoperative::{
             self, 
-            action::NewEquipmentRequirement, 
+            action::{NewEquipmentRequirement, RemoveEquipmentRequirement}, 
             Action
-        }}
-    }, 
-    database::{
+        }, database::{
         self, 
         table::{
             data::TableData, 
             ui_builder::BuildTable
         }
-    }, 
-    OperationApp, 
-    FORM_BACKGROUND, 
-    FORM_TEXT_SIZE
+    }, OperationApp, FORM_BACKGROUND, FORM_TEXT_SIZE
 };
 
 pub fn add_requirement_area(
@@ -35,7 +29,7 @@ pub fn add_requirement_area(
     data: &TableData, 
     ui: &mut Ui, 
     ctx: &Context, 
-    app_tx: &Sender<Commands>
+    app_tx: &Sender<Actions>
 ) {
     if let Some(s) = s {
         match data.equipment.read() {
@@ -89,7 +83,13 @@ pub fn add_requirement_area(
                                 s.name != "" &&
                                 s.quantity != 0
                                 {
-                                    app_tx.send(Commands::Reset);
+                                    let _ = app_tx.send(
+                                        Actions::Preoperation(
+                                            Preoperation::AddNewEquipmentRequirement(
+                                                s.to_owned()
+                                            )
+                                        )
+                                    );
                                 }
                             });
                         });
@@ -99,6 +99,49 @@ pub fn add_requirement_area(
             Err(_) => todo!(),
         }
     }
+}
+pub fn remove_requirement_area(
+    s: &mut Option<RemoveEquipmentRequirement>, 
+    data: &TableData, 
+    ui: &mut Ui, 
+    ctx: &Context, 
+    app_tx: &Sender<Actions>
+) {
+    Frame::none()
+    .rounding(20.0)
+    .inner_margin(20.0)
+    .show(ui, |ui| {
+        ui.columns(1, |columns| {
+            columns[0].vertical_centered(|ui| {
+                let tbl = TableBuilder::new(ui)
+                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
+                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
+                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
+                .auto_shrink(true)
+                .striped(true)
+                .max_scroll_height(500.0)
+                .header(20.0, |mut header| {
+                    let headings = [
+                        "EQUIPMENT",
+                        "STATUS",
+                        "",
+                    ];                
+                    for title in headings {
+                        header.col(|ui| {
+                            ui.horizontal_centered(|ui|{
+                                ui.heading(title);
+                            });
+                        });
+                    }
+                })
+                .body(|mut body| {
+                    for content in s {
+                        
+                    }
+                });
+            });
+        });
+    });
 }
 
 pub fn tool_checklist_area(
@@ -143,7 +186,7 @@ pub fn staff_list_area(
     }
 }
 
-pub fn add_tool_requirement_area(
+pub fn tool_ready_action_options(
     ui: &mut Ui,
     selected_action: &mut Option<Action>
 ) {
@@ -161,6 +204,49 @@ pub fn add_tool_requirement_area(
         tool_response.iter().for_each(|v: &egui::Response| {
             if v.clicked() && !matches!(selected_action, Some(_)) {
                 *selected_action = Some(preoperative::Action::AddRequirement(Some(NewEquipmentRequirement::default())));
+            } else if v.clicked() {
+                *selected_action = None;
+            };
+        });
+    });
+    let _ = Frame::none()
+    .inner_margin(Margin::same(20.0))
+    .show(ui, |ui| {
+        let mut tool_response = Vec::new();
+        let first_tool = ui.horizontal(|ui| {
+            tool_response.push(ui.label(RichText::new("⊞").size(40.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+            tool_response.push(ui.heading(RichText::new("remove requirement").size(20.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+        }).response;
+        
+        let tool = first_tool.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+        tool_response.push(tool);
+        tool_response.iter().for_each(|v: &egui::Response| {
+            if v.clicked() && !matches!(selected_action, Some(_)) {
+                *selected_action = Some(preoperative::Action::RemoveRequirement(Some(RemoveEquipmentRequirement { id: 0, name: "".to_string(), status: database::table::public::EquipmentStatus::Borrowed })));
+            } else if v.clicked() {
+                *selected_action = None;
+            };
+        });
+    });
+}
+pub fn staff_list_action_options(
+    ui: &mut Ui,
+    selected_action: &mut Option<Action>
+) {
+    let _ = Frame::none()
+    .inner_margin(Margin::same(20.0))
+    .show(ui, |ui| {
+        let mut tool_response = Vec::new();
+        let first_tool = ui.horizontal(|ui| {
+            tool_response.push(ui.label(RichText::new("⊞").size(40.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+            tool_response.push(ui.heading(RichText::new("add new role requirement").size(20.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+        }).response;
+        
+        let tool = first_tool.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+        tool_response.push(tool);
+        tool_response.iter().for_each(|v: &egui::Response| {
+            if v.clicked() && !matches!(selected_action, Some(_)) {
+                *selected_action = Some(preoperative::Action::AddStaffRole);
             } else if v.clicked() {
                 *selected_action = None;
             };

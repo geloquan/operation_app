@@ -1,4 +1,4 @@
+use crate::database::table::private::OperationToolOnSiteToggle;
 
-pub enum Commands {
-    Reset
-}
+use super::operation::menu::preoperative::action::{NewEquipmentRequirement, RemoveEquipmentRequirement};
+

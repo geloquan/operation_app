@@ -1,5 +1,5 @@
 use super::structure::{ActionLogProperty, OperationSelect, OperationStaffProperty, PreOperativeToolReady};
-use crate::{application::operation::menu::preoperative, database::table::{self, public::{ActionLog, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
+use crate::{application::operation::menu::{intraoperative, preoperative}, database::table::{self, public::{ActionLog, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
 impl OperationApp {
     pub fn select_operation(&mut self, id: &i32) {
         self.operation_id = Some(*id);
@@ -87,6 +87,9 @@ impl OperationApp {
         } else {
             None
         }
+    }
+    pub fn get_selected_intraoperation(&mut self) -> Option<intraoperative::Init> {
+        None
     }
 
     pub fn filter_operation(&mut self) {
@@ -194,13 +197,6 @@ impl OperationApp {
         if let (Some(data), Some(operation_id)) = (&self.data, &self.operation_id) {
             let operation_staff = data.operation_staff.read().unwrap();
             let staff = data.staff.read().unwrap();
-
-            {
-                println!("operation_staff {:?}", operation_staff);
-            }
-            {
-                println!("staffstaff {:?}", staff);
-            }
             
             let operation_staffs: Option<Vec<OperationStaffProperty>> = Some(
                 operation_staff.iter()
@@ -231,7 +227,6 @@ impl OperationApp {
                 .collect()
             );
 
-            println!("operation staffs {:?}", operation_staffs);
             operation_staffs
             
         } else {

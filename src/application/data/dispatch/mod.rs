@@ -1,5 +1,5 @@
 
-use crate::{action, OperationApp, SendMessage};
+use crate::{action::{self, Preoperation}, OperationApp, SendMessage};
 pub mod local;
 pub mod server;
 /// REVIEW 
@@ -15,7 +15,7 @@ pub trait Dispatch {
 // updating property
 impl Dispatch for OperationApp {
     fn action(&mut self, action: action::Actions) {
-        if let action::Actions::OperationToolOnSiteToggle(operation_tool_on_site_toggle) = &action {
+        if let action::Actions::Preoperation(Preoperation::ToolOnSiteToggle(operation_tool_on_site_toggle)) = &action {
             let request_json = serde_json::to_string(&SendMessage {
                 level: "Operation".to_string(),
                 method: "Update".to_string(),

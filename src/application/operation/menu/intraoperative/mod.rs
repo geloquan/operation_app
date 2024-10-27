@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 
 #[derive(Clone, Default)]
 pub struct Menu {
@@ -14,4 +16,9 @@ pub enum MenuOptions {
 pub enum Action {
     ToolRequest,
     StaffRequest,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Init {
+    
 }

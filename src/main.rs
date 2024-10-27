@@ -2,7 +2,8 @@ mod database;
 
 mod action;
 
-use application::global::Commands;
+use action::Actions;
+use application::data::dispatch::Dispatch;
 use database::table::{
     ui_builder::BuildTable, 
     data::TableData, 
@@ -38,8 +39,12 @@ use application::states::preoperative::menu::action as PreoperativeMenuAction;
 use application::operation::menu::preoperative::Action as PreoperativeActions;
 use application::operation::menu::preoperative::MenuOptions as PreoperativeMenuActionOptions;
 
+
+
 use application::operation::State as OperationStates;
 use application::states::preoperative::menu as PreoperativeMenu;
+
+use application::states::intraoperative::menu as IntraoperativeMenu;
 
 pub mod temporary;
 
@@ -112,8 +117,8 @@ pub struct OperationApp {
     operation_id: Option<i32>,
     require_update: bool,
     operation_state: Option<application::operation::State>,
-    app_tx: std::sync::mpsc::Sender<Commands>,
-    app_rx: std::sync::mpsc::Receiver<Commands>
+    pub app_tx: std::sync::mpsc::Sender<Actions>,
+    pub app_rx: std::sync::mpsc::Receiver<Actions>
 }
 
 impl OperationApp {
@@ -151,26 +156,37 @@ impl App for OperationApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_incoming();
 
-        while let Ok(sender) = &self.app_rx.try_recv() {
-            match sender {
-                Commands::Reset => {
-                    println!("reset");
-                    if let Some(operation_state) = &mut self.operation_state {
-                        match operation_state {
-                            operation::State::Preoperation(menu) => {
-                                println!("Preoperation(menu)");
-                                menu.selected_action = None;
-                                menu.selected_menu = None;
-                            },
-                            operation::State::Intraoperation(menu) => {
-                                menu.selected_action = None;
-                                menu.selected_menu = None;
-                            },
-                            operation::State::Postoperation => todo!(),
-                        }
-
+        while let Ok(action) = &self.app_rx.try_recv() {
+            let main_panel_reload: bool = match action {
+                Actions::Preoperation(preoperation) => {
+                    match preoperation {
+                        action::Preoperation::ToolOnSiteToggle(operation_tool_on_site_toggle) => {
+                            self.action(action.to_owned());
+                            false
+                        },
+                        action::Preoperation::AddNewEquipmentRequirement(new_equipment_requirement) => {
+                            true
+                        },
+                        action::Preoperation::RemoveEquipmentRequirement(remove_equipment_requirement) => {
+                            true
+                        },
                     }
                 },
+            };
+            if main_panel_reload {
+                if let Some(operation_state) = &mut self.operation_state {
+                    match operation_state {
+                        operation::State::Preoperation(menu) => {
+                            menu.selected_action = None;
+                            menu.selected_menu = None;
+                        },
+                        operation::State::Intraoperation(menu) => {
+                            menu.selected_action = None;
+                            menu.selected_menu = None;
+                        },
+                        operation::State::Postoperation => todo!(),
+                    }
+                }
             }
         }
 
@@ -254,7 +270,6 @@ impl App for OperationApp {
                         }
                     }
                 }
-                
             
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                     ui.add_space(margin);
@@ -317,7 +332,8 @@ impl App for OperationApp {
                     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                         if self.operation_state.is_none() {
                             ui.label("🔎 SEARCH OPERATION");
-                            if ui.text_edit_singleline(&mut self.search.search_operation).changed() || self.require_update == true {
+                            if ui.text_edit_singleline(&mut self.search.search_operation).changed() || 
+                            self.require_update == true {
                                 let _ = &self.filter_operation();
 
                                 self.require_update = false;
@@ -325,7 +341,8 @@ impl App for OperationApp {
             
                             ui.separator();
             
-                            if self.search.search_operation_result.is_empty() && self.search.search_operation != "" {
+                            if self.search.search_operation_result.is_empty() && 
+                            self.search.search_operation != "" {
                                 ui.label("💤 No results found");
                             } else if self.data.is_some() {
                                 if !self.search.search_operation_result.is_empty() {
@@ -345,16 +362,36 @@ impl App for OperationApp {
                                     });
                                 }
                             }
-                        } else if let (Some(operation_state), Some(_), Some(data), app_tx) = (&mut self.operation_state, &self.operation_id, &self.data, &self.app_tx) {
+                        } else if let (
+                            Some(operation_state), 
+                            Some(_), 
+                            Some(data), 
+                            app_tx
+                        ) = (
+                            &mut self.operation_state, 
+                            &self.operation_id, 
+                            &self.data, 
+                            &self.app_tx
+                        ) {
                             match operation_state {
                                 OperationStates::Preoperation(menu) => {
                                     if let Some(selected_action) = &mut menu.selected_action {
-                                        ui.heading("New Requirement Form");
                                         ui.add_space(20.0);
                                         match selected_action {
                                             PreoperativeActions::AddRequirement(s) => {
+                                                ui.heading("New Requirement Form");
                                                 PreoperativeMenuAction::add_requirement_area(s, data, ui, ctx, app_tx);
-                                            }
+                                            },
+                                            PreoperativeActions::RemoveRequirement(s) => {
+                                                ui.heading("Remove Requirement");
+                                                PreoperativeMenuAction::remove_requirement_area(s, data, ui, ctx, app_tx);
+                                            },
+                                            PreoperativeActions::AddStaffRole => {
+                                                
+                                            },
+                                            PreoperativeActions::RemoveStaffRole => {
+                                                
+                                            },
                                         }
                                     } else if let Some(selected_menu) = &menu.selected_menu {
                                         match selected_menu {
@@ -375,33 +412,62 @@ impl App for OperationApp {
                     });
                 } 
             });
-            egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-                if let (Some(operation), Some(operation_state), operation_id, sender, staff_credential) = (&mut self.get_selected_preoperation(), &mut self.operation_state, &self.operation_id, &mut self.sender, &self.staff) {
-                    match operation_state {
-                        OperationStates::Preoperation(menu) => {
-                            PreoperativeMenu::init(ui, menu, operation, operation_id, sender, staff_credential);
-                        },
-                        OperationStates::Intraoperation(_) => {},
-                        OperationStates::Postoperation => todo!(),
+            egui::TopBottomPanel::bottom("menu_option").show(ctx, |ui| {
+                if let (
+                    Some(operation), 
+                    Some(operation_state),
+                    operation_id, 
+                    sender, 
+                    staff_credential
+                ) = (
+                    &mut self.get_selected_preoperation(), 
+                    &mut self.operation_state,
+                    &self.operation_id,
+                    &mut self.sender, 
+                    &self.staff
+                ) {
+                    if let OperationStates::Preoperation(menu) = operation_state {
+                        PreoperativeMenu::init(ui, menu, operation, operation_id, sender, staff_credential);
                     }
-                
+                } else if let (
+                    Some(operation), 
+                    Some(operation_state),
+                    operation_id, 
+                    sender, 
+                    staff_credential
+                ) = (
+                    &mut self.get_selected_intraoperation(), 
+                    &mut self.operation_state,
+                    &self.operation_id,
+                    &mut self.sender, 
+                    &self.staff
+                ) {
+                    if let OperationStates::Intraoperation(menu) = operation_state {
+                        IntraoperativeMenu::init(ui, menu, operation, operation_id, sender, staff_credential);
+                    }
                 }
                 ui.add_space(40.0);
             });
 
             if let Some(operation_state) = &mut self.operation_state {
-                egui::TopBottomPanel::bottom("bottome").show(ctx, |ui| {
+                egui::TopBottomPanel::bottom("action_option").show(ctx, |ui| {
                     match operation_state {
                         operation::State::Preoperation(menu) => {
                             if let (Some(selected_menu), selected_action) = (menu.selected_menu.as_mut(), &mut menu.selected_action) {
                                 match selected_menu {
                                     PreoperativeMenuActionOptions::Staff => {
-                                        
+                                        PreoperativeMenuAction::staff_list_action_options(ui, selected_action);
                                     },
                                     PreoperativeMenuActionOptions::ToolReady => {
-                                        PreoperativeMenuAction::add_tool_requirement_area(ui, selected_action);
+                                        PreoperativeMenuAction::tool_ready_action_options(ui, selected_action);
                                     },
                                 }
+                                if selected_action.is_none() {
+                                } else {
+                                    
+                                }
+                            } else {
+                                
                             }
                         
                         },
@@ -409,7 +475,7 @@ impl App for OperationApp {
                         operation::State::Postoperation => todo!(),
                     }
                 });
-            }
+            } 
         }
 
         ctx.request_repaint();
