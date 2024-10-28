@@ -160,14 +160,14 @@ impl App for OperationApp {
             let main_panel_reload: bool = match action {
                 Actions::Preoperation(preoperation) => {
                     match preoperation {
-                        action::Preoperation::ToolOnSiteToggle(operation_tool_on_site_toggle) => {
+                        action::Preoperation::ToolOnSiteToggle(_) => {
                             self.action(action.to_owned());
                             false
                         },
-                        action::Preoperation::AddNewEquipmentRequirement(new_equipment_requirement) => {
+                        action::Preoperation::AddNewEquipmentRequirement(_) => {
                             true
                         },
-                        action::Preoperation::RemoveEquipmentRequirement(remove_equipment_requirement) => {
+                        action::Preoperation::RemoveEquipmentRequirement(_) => {
                             true
                         },
                     }
