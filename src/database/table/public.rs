@@ -107,13 +107,15 @@ pub enum AlertNotificationStatus {
 #[derive(Clone, Debug, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum ActionLogLabel {
     OnSiteToggle,
-    AddEquipmentRequirement
+    AddEquipmentRequirement,
+    RemoveEquipmentRequirement,
 }
 impl fmt::Display for ActionLogLabel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let action_log_str = match self {
             ActionLogLabel::OnSiteToggle => "Tool On-site toggled",
             ActionLogLabel::AddEquipmentRequirement => "Equipment Requirement Added",
+            ActionLogLabel::RemoveEquipmentRequirement => "Equipment Requirement Removed",
         };
         write!(f, "{}", action_log_str)
     }

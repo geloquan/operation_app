@@ -1,7 +1,8 @@
 
+use egui::accesskit::Action;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use crate::{application::{authenticate::StaffCredential, operation::menu::intraoperative::Menu}, cipher::{decrypt_message, generate_fixed_key, EncryptedText}, component::design, database::table::{data::TableData, private}, ws::process::Update, OperationApp, SendMessage};
+use crate::{application::{authenticate::StaffCredential, operation::menu::intraoperative::Menu}, cipher::{decrypt_message, generate_fixed_key, EncryptedText}, component::design, database::table::{data::TableData, private, public::ActionLogLabel}, ws::process::Update, OperationApp, SendMessage};
 
 
 #[derive(Deserialize, Debug, Serialize, Clone, Copy)]
@@ -35,8 +36,9 @@ pub enum Operation {
 }
 #[derive(Deserialize, Debug, Serialize)]
 pub struct ReceiveMessage {
-    pub table_name: TableTarget,
+    pub table_name: Option<TableTarget>,
     pub operation: Operation,
+    pub action: Option<ActionLogLabel>,
     pub status_code: String,
     pub data: String,
 }
@@ -55,7 +57,6 @@ impl Handle for OperationApp {
                         ewebsock::WsMessage::Binary(vec) => todo!(),
                         ewebsock::WsMessage::Text(text) => {
                             let text_len = text.len();
-                            println!("text len: {:?}", text_len);
                             match serde_json::from_str::<EncryptedText>(&text) {
                                 Ok(encrypted_text) => {
                                     if let Ok(key) = &generate_fixed_key() {
@@ -64,6 +65,7 @@ impl Handle for OperationApp {
                                                 Ok(message) => {
                                                     match message.operation {
                                                         Operation::Initialize => {
+                                                            println!("initialize: {:?}", message);
                                                             if let Some(data) = &mut self.data {
                                                                 data.initialize(message.data);
                                                             } else {

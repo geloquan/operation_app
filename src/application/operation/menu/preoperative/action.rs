@@ -4,6 +4,7 @@ use crate::database::table::public::EquipmentStatus;
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
 pub struct NewEquipmentRequirement {
+    pub operation_id: i32,
     pub name: String,
     pub on_site: bool,
     pub quantity: i32,
