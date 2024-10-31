@@ -31,8 +31,16 @@ impl Dispatch for OperationApp {
             
                         self.sender.send(ewebsock::WsMessage::Text(request_json));
                     },
-                    Preoperation::AddNewEquipmentRequirement(new_equipment_requirement) => {
-                        
+                    Preoperation::AddNewEquipmentRequirement(_) => {
+                        let request_json = serde_json::to_string(&SendMessage {
+                            level: "Operation".to_string(),
+                            method: "Update".to_string(),
+                            data: None,
+                            staff_credential: self.staff.clone(),
+                            action: Some(action.clone())
+                        }).unwrap();
+            
+                        self.sender.send(ewebsock::WsMessage::Text(request_json));
                     },
                     Preoperation::RemoveEquipmentRequirement(remove_equipment_requirement) => {
                         

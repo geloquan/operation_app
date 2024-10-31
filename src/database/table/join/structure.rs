@@ -21,11 +21,9 @@ pub struct PreOperativeToolReady {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionLogProperty {
+    pub action_log_group_id: i32,
     pub staff: String,
     pub label: String,
-    pub label_reference: String,
-    pub before_val: String,
-    pub after_val: String,
     pub date: String,
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]

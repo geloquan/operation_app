@@ -2,7 +2,7 @@ mod database;
 
 mod action;
 
-use action::Actions;
+use action::{Actions, HandleAction};
 use application::data::dispatch::Dispatch;
 use database::table::{
     ui_builder::BuildTable, 
@@ -125,7 +125,7 @@ impl OperationApp {
     fn new(_: &eframe::CreationContext<'_>) -> Self {
         
         let options = ewebsock::Options::default();
-        let (sender, receiver) = ewebsock::connect("ws://192.168.106.70:8080", options).unwrap();
+        let (sender, receiver) = ewebsock::connect("ws://192.168.1.5:8080", options).unwrap();
 
         let (app_tx, app_rx) = std::sync::mpsc::channel();
 
@@ -154,42 +154,10 @@ impl OperationApp {
 
 impl App for OperationApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        
         self.handle_incoming();
 
-        while let Ok(action) = &self.app_rx.try_recv() {
-            let main_panel_reload: bool = match action {
-                Actions::Preoperation(preoperation) => {
-                    match preoperation {
-                        action::Preoperation::ToolOnSiteToggle(_) => {
-                            self.action(action.to_owned());
-                            false
-                        },
-                        action::Preoperation::AddNewEquipmentRequirement(_) => {
-
-                            true
-                        },
-                        action::Preoperation::RemoveEquipmentRequirement(_) => {
-                            true
-                        },
-                    }
-                },
-            };
-            if main_panel_reload {
-                if let Some(operation_state) = &mut self.operation_state {
-                    match operation_state {
-                        operation::State::Preoperation(menu) => {
-                            menu.selected_action = None;
-                            menu.selected_menu = None;
-                        },
-                        operation::State::Intraoperation(menu) => {
-                            menu.selected_action = None;
-                            menu.selected_menu = None;
-                        },
-                        operation::State::Postoperation => todo!(),
-                    }
-                }
-            }
-        }
+        self.handle_action();
 
         if let Some(id) = self.operation_id {
             self.select_operation(&id);
@@ -301,21 +269,10 @@ impl App for OperationApp {
                     .show(ui, |ui| {
                         if let Some(action_log) = self.get_action_log_operation() {
                             for row in &action_log {
-                                ui.horizontal(|ui| {
-                                    ui.label("target: ");
-                                    ui.label(row.label_reference.clone());
-                                });
                                 ui.label(row.label.clone());
                                 ui.horizontal(|ui| {
                                     ui.label("staff: ");
                                     ui.label(row.staff.clone());
-                                });
-                                ui.horizontal(|ui| {
-                                    ui.label("before: ");
-                                    ui.label(row.before_val.clone());
-                                    ui.label("after: ");
-                                    ui.label(row.after_val.clone());
-                                    
                                 });
                                 ui.horizontal(|ui| {
                                     ui.label("date: ");

@@ -267,14 +267,11 @@ pub struct AlertStaff {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionLog {
     pub id: Option<i32>,
-    pub staff_id: Option<i32>,
-    pub label: Option<ActionLogLabel>,
     pub table_name: Option<Tables>,
     pub row_id: Option<i32>,
     pub old_value: Option<String>,
     pub new_value: Option<String>,
-    pub action: Option<ActionLogAction>,
-    pub date_time: Option<String>       
+    pub action: Option<ActionLogAction>   
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EquipmentRequest {
@@ -288,4 +285,13 @@ pub struct PatientConsent {
     pub id: Option<i32>,
     pub patient_id: Option<i32>,
     pub approved: Option<i8>
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActionLogGroup {
+    pub id: Option<i32>,
+    pub label: Option<ActionLogLabel>,
+    pub sequence_number: Option<i32>,
+    pub actionlog_id: Option<i32>,
+    pub staff_id: Option<i32>,
+    pub date_time: Option<String>    
 }

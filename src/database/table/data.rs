@@ -26,6 +26,7 @@ pub struct RawTable {
     pub action_log: Vec<public::ActionLog>,
     pub equipment_request: Vec<public::EquipmentRequest>,
     pub patient_consent: Vec<public::PatientConsent>,
+    pub action_log_group: Vec<public::ActionLogGroup>,
 }
 #[derive(Debug, Clone)]
 pub struct TableData {
@@ -49,6 +50,7 @@ pub struct TableData {
     pub action_log: Arc<RwLock<Vec<public::ActionLog>>>,
     pub equipment_request: Arc<RwLock<Vec<public::EquipmentRequest>>>,
     pub patient_consent: Arc<RwLock<Vec<public::PatientConsent>>>,
+    pub action_log_group: Arc<RwLock<Vec<public::ActionLogGroup>>>,
 }
 impl TableData {
     pub fn new() -> Self {
@@ -73,6 +75,7 @@ impl TableData {
             action_log: Arc::new(RwLock::new(Vec::new())),
             equipment_request: Arc::new(RwLock::new(Vec::new())),
             patient_consent: Arc::new(RwLock::new(Vec::new())),
+            action_log_group: Arc::new(RwLock::new(Vec::new())),
         }
     }
     pub fn initialize(&mut self, raw_string: String) {
@@ -98,6 +101,7 @@ impl TableData {
         self.action_log = Arc::new(RwLock::new(raw_table.action_log.clone()));
         self.equipment_request = Arc::new(RwLock::new(raw_table.equipment_request.clone()));
         self.patient_consent = Arc::new(RwLock::new(raw_table.patient_consent.clone()));
+        self.action_log_group = Arc::new(RwLock::new(raw_table.action_log_group.clone()));
     }
 }
 
