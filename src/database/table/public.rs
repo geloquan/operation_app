@@ -271,7 +271,8 @@ pub struct ActionLog {
     pub row_id: Option<i32>,
     pub old_value: Option<String>,
     pub new_value: Option<String>,
-    pub action: Option<ActionLogAction>   
+    pub action: Option<ActionLogAction>,
+    pub column_name: Option<String>
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EquipmentRequest {

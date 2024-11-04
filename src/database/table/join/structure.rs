@@ -34,3 +34,10 @@ pub struct OperationStaffProperty {
     pub phone: String,
     pub role: StaffRole,
 }
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct EquipmentRequestedProperty {
+    pub id: i32,
+    pub equipment_name: String,
+    pub staff_name: String,
+    pub count: i32,
+}

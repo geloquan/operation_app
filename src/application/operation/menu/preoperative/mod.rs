@@ -17,6 +17,7 @@ pub struct Menu {
 pub enum MenuOptions {
     Staff,
     ToolReady,
+    EquipmentRequested,
 }
 #[derive(PartialEq, Clone, Debug)]
 pub enum Action {
@@ -40,6 +41,7 @@ pub struct Init {
     pub start_time: String,
     pub end_time: String,
     pub staff_count: i64,
+    pub equipment_requested_count: i64,
 
     pub approved_consent: bool,
 }

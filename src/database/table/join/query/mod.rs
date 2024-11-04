@@ -1,5 +1,7 @@
-use super::structure::{ActionLogProperty, OperationSelect, OperationStaffProperty, PreOperativeToolReady};
-use crate::{application::operation::menu::{intraoperative, preoperative}, database::table::{self, public::{ActionLog, ActionLogGroup, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
+use egui::Id;
+
+use super::structure::{ActionLogProperty, EquipmentRequestedProperty, OperationSelect, OperationStaffProperty, PreOperativeToolReady};
+use crate::{application::operation::{self, menu::{intraoperative, preoperative}}, database::table::{self, public::{ActionLog, ActionLogGroup, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
 impl OperationApp {
     pub fn select_operation(&mut self, id: &i32) {
         self.operation_id = Some(*id);
@@ -14,6 +16,8 @@ impl OperationApp {
             let operation_staff = data.operation_staff.read().unwrap();
             
             let patient_consent = data.patient_consent.read().unwrap();
+            
+            let equipment_request = data.equipment_request.read().unwrap();
     
             let operation_select: Option<preoperative::Init> = operation.iter().find_map(|op| {
                 if let Some(op_id) = op.id {
@@ -47,10 +51,12 @@ impl OperationApp {
                                 .filter(|ot| op_id_opt.map(|id| id == ot.operation_id.unwrap() && match ot.on_site { Some(1) => true, _ => false }).unwrap_or(false))
                                 .count() as i64;
 
-                            
-
                             let staff_count = operation_staff.iter()
                             .filter(|ops| op_id_opt.map(|id| id == ops.operation_id.unwrap()).unwrap_or(false))
+                            .count() as i64;
+                        
+                            let equipment_requested_count = equipment_request.iter()
+                            .filter(|er| op_id_opt.map(|id| id == er.operation_id.unwrap()).unwrap_or(false))
                             .count() as i64;
                     
                             let on_site_ratio = if total_tools > 0 {
@@ -74,6 +80,7 @@ impl OperationApp {
                                 start_time: op.start_time.clone().unwrap_or_else(|| "N/A".to_string()), 
                                 end_time: op.end_time.clone().unwrap_or_else(|| "N/A".to_string()),   
                                 staff_count,
+                                equipment_requested_count,
 
                                 approved_consent: patient_approved,
                             });
@@ -271,6 +278,53 @@ impl OperationApp {
                     .collect()
                 );
             action_logs
+        } else {
+            None
+        }
+    }
+    pub fn equipment_requested_options(&self) -> Option<Vec<EquipmentRequestedProperty>> {
+        if let Some(ref data) = self.data {
+            let equipment_request = data.equipment_request.read().unwrap();
+            let equipment = data.equipment.read().unwrap();
+            let staff = data.staff.read().unwrap();
+            let equipment_requests: Option<Vec<EquipmentRequestedProperty>> = Some(
+                equipment_request
+                .iter()
+                .filter_map(|er| {
+                    let (_, _) = match (self.operation_id, er.operation_id) {
+                        (Some(op_id), Some(er_op_id)) if op_id == er_op_id => (op_id, er_op_id),
+                        _ => return None,
+                    };
+        
+                    match er.id {
+                        Some(equipment_id) => {
+                            let staff_full_name = staff.iter()
+                                .find(|s| er.source_staff_id.map_or(false, |id| id == s.id.unwrap_or(0)))
+                                .map(|s| format!(
+                                    "{} {}",
+                                    s.first_name.clone().unwrap_or_else(|| "N/A".to_string()),
+                                    s.last_name.clone().unwrap_or_else(|| "N/A".to_string())
+                                ))
+                                .unwrap_or_else(|| "N/A".to_string());
+        
+                            let equipment_name = equipment.iter()
+                                .find(|e| er.source_staff_id.map_or(false, |id| id == e.id.unwrap_or(0)))
+                                .map(|s| s.name.clone().unwrap_or_else(|| "N/A".to_string()))
+                                .unwrap_or_else(|| "N/A".to_string());
+        
+                            Some(EquipmentRequestedProperty {
+                                id: equipment_id,
+                                equipment_name,
+                                staff_name: staff_full_name,
+                                count: 0,
+                            })
+                        }
+                        None => None,
+                    }
+                })
+                .collect()
+            );
+            equipment_requests
         } else {
             None
         }

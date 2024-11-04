@@ -38,6 +38,7 @@ pub fn init(
         let staff_clr: Color32 = Color32::default();
         let mut tool_clr: Color32 = Color32::default();
         let ascend_clr: Color32 = Color32::default();
+        let equipment_requested_clr: Color32 = Color32::default();
         
         
         Frame::none()
@@ -92,7 +93,33 @@ pub fn init(
                 };
             });
         });
-        
+
+        Frame::none()
+        .rounding(Rounding::same(20.0))
+        .fill(equipment_requested_clr)
+        .inner_margin(Margin::same(20.0))
+        .show(ui, |ui| {
+            let mut equipment_requested_response = Vec::new();
+            let equipment_requested = ui.horizontal(|ui| {
+                equipment_requested_response.push(ui.label(RichText::new("📰").size(60.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                ui.vertical(|ui| {
+                    equipment_requested_response.push(ui.heading(RichText::new("REQUESTED EQUIPMENT").size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                    equipment_requested_response.push(ui.label(RichText::new(operation.equipment_requested_count.to_string()).size(30.0)).interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand));
+                });
+            }).response;
+            let equipment_requested = equipment_requested.interact(egui::Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+            equipment_requested_response.push(equipment_requested);
+
+            equipment_requested_response.iter().for_each(|v| {
+                if v.clicked() && menu.selected_menu != Some(operation::menu::preoperative::MenuOptions::EquipmentRequested) {
+                    menu.selected_menu = Some(operation::menu::preoperative::MenuOptions::EquipmentRequested);
+                } else if v.clicked() {
+                    menu.selected_menu = None;
+                    menu.selected_action = None;
+                };
+            });
+        });
+
         Frame::none()
         .rounding(Rounding::same(20.0))
         .fill(tool_clr)
@@ -128,6 +155,5 @@ pub fn init(
                 };
             });
         });
-
     });
 }

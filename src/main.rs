@@ -125,7 +125,7 @@ impl OperationApp {
     fn new(_: &eframe::CreationContext<'_>) -> Self {
         
         let options = ewebsock::Options::default();
-        let (sender, receiver) = ewebsock::connect("ws://192.168.1.5:8080", options).unwrap();
+        let (sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", options).unwrap();
 
         let (app_tx, app_rx) = std::sync::mpsc::channel();
 
@@ -359,6 +359,9 @@ impl App for OperationApp {
                                             PreoperativeMenuActionOptions::Staff => {
                                                 PreoperativeMenuAction::staff_list_area(self, ui);
                                             },
+                                            PreoperativeMenuActionOptions::EquipmentRequested => {
+                                                PreoperativeMenuAction::equipment_requested_area(self, ui);
+                                            },
                                         }
                                     
                                     }
@@ -418,6 +421,9 @@ impl App for OperationApp {
                                     },
                                     PreoperativeMenuActionOptions::ToolReady => {
                                         PreoperativeMenuAction::tool_ready_action_options(ui, selected_action);
+                                    },
+                                    PreoperativeMenuActionOptions::EquipmentRequested => {
+                                        PreoperativeMenuAction::equipment_requested_options(ui, selected_action);
                                     },
                                 }
                                 if selected_action.is_none() {
