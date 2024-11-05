@@ -1,6 +1,6 @@
 use egui_extras::Table;
 
-use crate::{action::LogReturn, database::table::{self, public::{ActionLog, ActionLogGroup, Operation}}, OperationApp};
+use crate::{action::LogReturn, database::table::{self, private::OperationToolOnSiteToggle, public::{ActionLog, ActionLogGroup, Operation, OperationTool}}, OperationApp};
 
 use super::{receive::{ReceiveMessage, TableTarget}, types};
 
@@ -33,15 +33,17 @@ impl Update for OperationApp {
                                 
                                 let mut operation_tools= data.operation_tool.write().unwrap();
                                 for operation_tool in operation_tools.iter_mut() {
-                                    if let (Some(tool_id), Some(row_id), Some(new_value)) = (&operation_tool.tool_id, &action_log_return[0].row_id, &action_log_return[0].new_value) {
-                                        if tool_id == row_id {
-                                            if let Some(on_site) = &mut operation_tool.on_site {
-                                                *on_site = if new_value == "1" {
-                                                    1 as i8
-                                                } else {
-                                                    0 as i8
-                                                };
-                                            }
+                                    if let (Some(tool_id), Some(new_value), Some(old_value)) = (&operation_tool.tool_id, &action_log_return[0].new_value, &action_log_return[0].old_value) {
+                                        let operation_tool_value = serde_json::to_value(&operation_tool).expect("Failed to convert struct to Value");
+                                        let new_operation_tool_value: OperationToolOnSiteToggle = serde_json::from_value(new_value.to_owned()).expect("Failed to convert struct from Value");
+                                        let new_operation_tool = OperationTool {
+                                            id: Some(new_operation_tool_value.operation_tool_id),
+                                            operation_id: Some(new_operation_tool_value.operation_id),
+                                            tool_id: Some(new_operation_tool_value.tool_id),
+                                            on_site: if new_operation_tool_value.on_site_value { Some(1) } else { Some(0) },
+                                        };
+                                        if tool_id == old_value.get("operation_tool_id").unwrap() {
+                                            *operation_tool = new_operation_tool;
                                         }
                                     }
                                 }

@@ -125,7 +125,7 @@ impl OperationApp {
     fn new(_: &eframe::CreationContext<'_>) -> Self {
         
         let options = ewebsock::Options::default();
-        let (sender, receiver) = ewebsock::connect("ws://192.168.1.6:8080", options).unwrap();
+        let (sender, receiver) = ewebsock::connect("ws://192.168.1.4:8080", options).unwrap();
 
         let (app_tx, app_rx) = std::sync::mpsc::channel();
 

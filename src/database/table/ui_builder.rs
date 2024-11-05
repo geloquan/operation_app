@@ -111,7 +111,7 @@ impl BuildTable for OperationApp {
                                 match content.on_site {
                                     true => {
                                         if ui.checkbox(&mut true, "").interact(Sense::click()).clicked() {
-                                            let toggle = OperationToolOnSiteToggle{tool_id: content.operation_tool_id, operation_id: self.operation_id.unwrap_or_else(|| 0), on_site_value: false};
+                                            let toggle = OperationToolOnSiteToggle{tool_id: content.operation_tool_id, operation_id: self.operation_id.unwrap_or_else(|| 0), on_site_value: false, operation_tool_id: content.operation_tool_id};
                                             let _ = self.app_tx.send(
                                                 action::Actions::Preoperation(
                                                     action::Preoperation::ToolOnSiteToggle(toggle)
@@ -121,7 +121,7 @@ impl BuildTable for OperationApp {
                                     },
                                     false => {
                                         if ui.checkbox(&mut false, "").interact(Sense::click()).clicked() { 
-                                            let toggle = OperationToolOnSiteToggle{tool_id: content.operation_tool_id, operation_id: self.operation_id.unwrap_or_else(|| 0), on_site_value: true};
+                                            let toggle = OperationToolOnSiteToggle{tool_id: content.operation_tool_id, operation_id: self.operation_id.unwrap_or_else(|| 0), on_site_value: true, operation_tool_id: content.operation_tool_id};
                                             let _ = self.app_tx.send(
                                                 action::Actions::Preoperation(
                                                     action::Preoperation::ToolOnSiteToggle(toggle)

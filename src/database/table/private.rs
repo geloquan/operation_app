@@ -14,6 +14,7 @@ pub struct StaffAuthGrant {
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OperationToolOnSiteToggle {
+    pub operation_tool_id: i32,
     pub operation_id: i32,
     pub tool_id: i32,
     pub on_site_value: bool,

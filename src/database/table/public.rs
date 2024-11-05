@@ -1,5 +1,6 @@
 use std::fmt;
 use serde::{Serialize, Deserialize};
+use serde_json::Value;
 
 use super::Tables;
 
@@ -264,15 +265,14 @@ pub struct AlertStaff {
     pub staff_id: Option<i32>,
     pub alert_id: Option<i32>,
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionLog {
     pub id: Option<i32>,
     pub table_name: Option<Tables>,
-    pub row_id: Option<i32>,
-    pub old_value: Option<String>,
-    pub new_value: Option<String>,
+    pub old_value: Option<Value>,
+    pub new_value: Option<Value>,
     pub action: Option<ActionLogAction>,
-    pub column_name: Option<String>
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EquipmentRequest {
