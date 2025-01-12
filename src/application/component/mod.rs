@@ -1,6 +1,8 @@
 use egui::{Align2, Color32, Window};
 use ewebsock::WsSender;
 
+use egui_kittest::{kittest::{Node, Queryable}, Harness};
+
 use crate::{component::design, SendMessage};
 
 use super::authenticate::StaffCredential;
@@ -33,6 +35,9 @@ pub fn login(ctx: &egui::Context, credential_panel: &mut crate::application::sta
                 design::input(ui, &mut credential_panel.field.password, color, design::Category::Frame, "password");
             });
             if ui.button("login").clicked() {
+                credential_panel.field.email = "marco@gmail.com".to_string();
+                credential_panel.field.password = "123".to_string();
+
                 credential_panel.state = design::State::Waiting;
                 let request_json = serde_json::to_string(&SendMessage {
                     level: "Operation".to_string(),
@@ -46,5 +51,6 @@ pub fn login(ctx: &egui::Context, credential_panel: &mut crate::application::sta
                 credential_panel.field.password = "".to_string();
                 credential_panel.field.email = "".to_string();
             }
+            
         });
 }

@@ -181,10 +181,22 @@ impl App for OperationApp {
                             ui.label(staff_credential.email.clone());
                         });
                         if ui.button("logout").clicked() {
-                            self.credential_panel.state = design::State::Default;
+                            self.credential_panel = states::Login {
+                                field: field::Login {
+                                    email: "".to_string(),
+                                    password: "".to_string(),
+                                    session_token: "".to_string()
+                                },
+                                state: design::State::Default,
+                            };
+                            self.search = PreRunning {
+                                search_operation: "".to_string(),
+                                search_operation_result: vec![]
+                            };
                             self.staff = None;
                             self.operation_id = None;
                             self.data = None;
+                            self.operation_state = None;
                         }
                     }
                     let current_time = Local::now(); 
@@ -290,10 +302,10 @@ impl App for OperationApp {
                     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                         if self.operation_state.is_none() {
                             ui.label("🔎 SEARCH OPERATION");
+                            
                             if ui.text_edit_singleline(&mut self.search.search_operation).changed() || 
                             self.require_update == true {
                                 let _ = &self.filter_operation();
-
                                 self.require_update = false;
                             }
             

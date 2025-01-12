@@ -34,8 +34,6 @@ impl Update for OperationApp {
                                 let mut operation_tools= data.operation_tool.write().unwrap();
 
                                 for operation_tool in operation_tools.iter_mut() {
-                                    println!("operation_tool: {:?} ", operation_tool);
-                                    println!("action_log_return: {:?} ", action_log_return);
                                     if let (Some(tool_id), Some(new_value), Some(old_value)) = (&operation_tool.tool_id, &action_log_return[0].new_value, &action_log_return[0].old_value) {
                                         let operation_tool_value = serde_json::to_value(&operation_tool).expect("Failed to convert struct to Value");
                                         let new_operation_tool_value: OperationToolOnSiteToggle = serde_json::from_value(new_value.to_owned()).expect("Failed to convert struct from Value");
@@ -45,7 +43,6 @@ impl Update for OperationApp {
                                             tool_id: Some(new_operation_tool_value.tool_id),
                                             on_site: if new_operation_tool_value.on_site_value { Some(1) } else { Some(0) },
                                         };
-                                        println!("new_operation_tool: {:?} ", new_operation_tool);
                                         if tool_id == old_value.get("operation_tool_id").unwrap() {
                                             *operation_tool = new_operation_tool;
                                         }

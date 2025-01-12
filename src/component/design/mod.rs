@@ -20,9 +20,9 @@ pub(crate) fn input(ui: &mut Ui, data: &mut String, color: Color32, category: Ca
     match category {
         Category::Frame => {
             Frame::none()
-            .fill(color) // Red background
-            .rounding(5.0)      // Optional: Rounded corners
-            .inner_margin(egui::Margin::same(1.0)) // Optional: Inner padding
+            .fill(color)
+            .rounding(5.0)     
+            .inner_margin(egui::Margin::same(1.0))
             .show(ui, |ui| {
                 let mut visuals = ui.visuals().clone();
                 visuals.widgets.hovered.bg_fill = color;
