@@ -33,6 +33,7 @@ use egui::{
     RichText, 
     TextEdit
 };
+use egui_kittest::{kittest::{Node, Queryable}, Harness};
 use ws::receive::Handle;
 
 use application::states::preoperative::menu::action as PreoperativeMenuAction;
@@ -298,7 +299,7 @@ impl App for OperationApp {
             });
             egui::CentralPanel::default().show(ctx, |ui| {
                 if self.staff.is_some() {
-                    ui.add_space(50.0);
+                    ui.add_space(80.0);
                     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                         if self.operation_state.is_none() {
                             ui.label("🔎 SEARCH OPERATION");
@@ -460,14 +461,14 @@ impl App for OperationApp {
 
 fn main() {
     let native_options: eframe::NativeOptions = eframe::NativeOptions::default();
-    let _app_thread = run_app(native_options);
+    let app_thread = run_app(native_options);
 
 }
 
 fn run_app(native_options: eframe::NativeOptions) -> Result<(), eframe::Error> {
     eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
         let app = OperationApp::new(cc);
-
         Ok(Box::new(app))
     }))
 }
+

@@ -1,7 +1,7 @@
 use egui::Id;
 
 use super::structure::{ActionLogProperty, EquipmentRequestedProperty, OperationSelect, OperationStaffProperty, PreOperativeToolReady};
-use crate::{application::operation::{self, menu::{intraoperative, preoperative}}, database::table::{self, public::{ActionLog, ActionLogGroup, EquipmentStatus, OperationStatus}, Tables}, OperationApp};
+use crate::{application::operation::{self, menu::{intraoperative, preoperative}}, database::table::{self, public::{ActionLog, ActionLogGroup, EquipmentStatus, OperationStatus, Staff}, Tables}, OperationApp};
 impl OperationApp {
     pub fn select_operation(&mut self, id: &i32) {
         self.operation_id = Some(*id);
@@ -154,6 +154,16 @@ impl OperationApp {
     
             self.search.search_operation_result = operation_select.clone();
         } 
+    }
+
+    pub fn get_staff(&self) -> Option<Vec<Staff>> {
+        if let (Some(data)) = (&self.data) {
+            let staff = data.staff.read().unwrap().clone();
+            
+            Some(staff)
+        } else {
+            None
+        }
     }
 
     pub fn get_preoperative_tool_ready(&self) -> Option<Vec<PreOperativeToolReady>> {

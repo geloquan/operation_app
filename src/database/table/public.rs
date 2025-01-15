@@ -280,6 +280,7 @@ pub struct EquipmentRequest {
     pub operation_id: Option<i32>,
     pub equipment_id: Option<i32>,
     pub source_staff_id: Option<i32>,
+    pub to_claim_staff_id: Option<i32>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PatientConsent {

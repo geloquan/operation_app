@@ -1,12 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use egui::{
-    Context, 
-    Frame, 
-    Margin, 
-    RichText, 
-    Style, 
-    Ui
+    Context, Frame, Margin, RichText, Style, TextEdit, Ui
 };
 use egui_extras::{Column, TableBuilder};
 
@@ -18,11 +13,12 @@ use crate::{
         }, database::{
         self, 
         table::{
-            data::TableData, 
-            ui_builder::BuildTable
+            data::TableData, public::Staff, ui_builder::BuildTable
         }
     }, OperationApp, FORM_BACKGROUND, FORM_TEXT_SIZE
 };
+
+use regex::Regex;
 
 pub fn add_requirement_area(
     s: &mut Option<NewEquipmentRequirement>, 
@@ -39,8 +35,8 @@ pub fn add_requirement_area(
                 .inner_margin(20.0)
                 .show(ui, |ui| {
                     ui.columns(1, |columns| {
-                        columns[0].vertical_centered(|ui| {
-                            ui.set_width(150.0);
+                        columns[0].vertical_centered_justified(|ui| {
+                            ui.set_width(700.0);
                             ui.horizontal_wrapped(|ui| {
                                 ui.push_id("select", |ui| {
                                     ui.heading(RichText::new("Select: ").size(FORM_TEXT_SIZE));
@@ -56,14 +52,62 @@ pub fn add_requirement_area(
                                     });
                                 });
                             });
+                            
                             ui.horizontal_wrapped(|ui| {
-                                ui.label(RichText::new("On Site: ").size(FORM_TEXT_SIZE));
+                                ui.label(RichText::new("Qty: ").size(FORM_TEXT_SIZE));
                                 ui.separator();
                                 let mut style: Style = (*ctx.style()).clone();
                                 style.spacing.icon_width = 32.0;
                                 style.spacing.icon_spacing = 16.0;
                                 ctx.set_style(style);
-                                ui.checkbox(&mut s.on_site, "");
+
+                                egui::ComboBox::from_label("")
+                                .selected_text(&s.quantity.to_string()) 
+                                .show_ui(ui, |ui| {
+                                    for i in 1..10 {
+                                        ui.selectable_value(&mut s.quantity, i.clone(), i.clone().to_string());
+                                    }
+                                });
+                            });
+
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label(RichText::new("To Claim: ").size(FORM_TEXT_SIZE));
+                                ui.separator();
+                                let mut style: Style = (*ctx.style()).clone();
+                                style.spacing.icon_width = 32.0;
+                                style.spacing.icon_spacing = 16.0;
+                                ctx.set_style(style);
+                                ui.checkbox(&mut s.to_claim, "");
+                            });
+
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label(RichText::new("Staff to claim: ").size(FORM_TEXT_SIZE));
+                                ui.text_edit_singleline(&mut s.staff_search);
+                                let mut style: Style = (*ctx.style()).clone();
+                                style.spacing.icon_width = 32.0;
+                                style.spacing.icon_spacing = 16.0;
+                                ctx.set_style(style);
+
+                                let staff: Vec<Staff> = data.staff.read().unwrap().clone();
+        
+                                let filtered_items: Vec<&Staff> = if s.staff_search.is_empty() {
+                                    vec![]
+                                } else if let Some(regex) = Regex::new(&mut s.staff_search).ok() {
+                                    staff.iter().filter(|item| regex.is_match(&item.first_name.clone().unwrap_or("".to_string())) || regex.is_match(&item.last_name.clone().unwrap_or("".to_string())) || regex.is_match(&item.email.clone().unwrap_or("".to_string()))).collect()
+                                } else {
+                                    vec![]
+                                };
+                            
+                                if filtered_items.is_empty() && !s.staff_search.is_empty() && s.to_claim_staff_id.is_none() {
+                                    ui.label("Staff not found.");
+                                } else {
+                                    for staff in filtered_items {
+                                        if ui.selectable_label(s.to_claim_staff_id.unwrap_or(0) == staff.id.unwrap_or(-1), format!("{} {} ({})", staff.first_name.clone().unwrap(), staff.last_name.clone().unwrap(), staff.email.clone().unwrap())).clicked() {
+                                            s.to_claim_staff_id = staff.id.clone();
+                                            s.staff_search = format!("{} {} ({})", staff.first_name.clone().unwrap(), staff.last_name.clone().unwrap(), staff.email.clone().unwrap());
+                                        }
+                                    }
+                                }
                             });
 
                             ui.horizontal_wrapped(|ui| {
