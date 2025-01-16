@@ -52,7 +52,7 @@ pub fn login(ctx: &egui::Context, credential_panel: &mut crate::application::sta
                 credential_panel.field.email = "".to_string();
             }
             
-            
+                        
         });
 }
 

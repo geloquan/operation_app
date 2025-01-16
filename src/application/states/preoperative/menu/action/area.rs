@@ -23,7 +23,7 @@ use regex::Regex;
 pub fn add_requirement_area(
     s: &mut Option<NewEquipmentRequirement>, 
     data: &TableData, 
-    ui: &mut Ui, 
+    ui: &mut egui::Ui, 
     ctx: &Context, 
     app_tx: &Sender<Actions>
 ) {
@@ -140,7 +140,7 @@ pub fn add_requirement_area(
 pub fn remove_requirement_area(
     s: &mut Option<RemoveEquipmentRequirement>, 
     data: &TableData, 
-    ui: &mut Ui, 
+    ui: &mut egui::Ui, 
     ctx: &Context, 
     app_tx: &Sender<Actions>
 ) {

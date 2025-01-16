@@ -4,13 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-eframe = { version = "0.29.1", default-features = false, features = [
-    "accesskit",     
-    "default_fonts", 
-    "glow",          
-    "persistence",   
-]}
-egui = "0.29.1"
+eframe = { version = "0.30.0", default-features = false, features = ["accesskit", "default_fonts", "glow", "persistence"] }
+egui = "0.30.0"
 futures = "0.3.30"
 futures-util = "0.3.30"
 tokio = { version = "1.40.0", features = ["full"] }
@@ -20,7 +15,7 @@ url = "2.5.2"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 ewebsock = "0.6.0"
-egui_extras = { path = "c:/Users/Windows/.cargo/registry/src/index.crates.io-6f17d22bba15001f/egui_extras-0.29.1" , features = ["serde", "datepicker", "chrono"] }
+egui_extras = { path = "c:/Users/Windows/.cargo/registry/src/index.crates.io-6f17d22bba15001f/egui_extras-0.30.0" , features = ["serde", "datepicker", "chrono"] }
 chrono = "0.4.38"
 
 aes-gcm = "0.10.3"

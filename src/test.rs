@@ -1,178 +1,29 @@
-mod database;
+use crate::*;
 
-mod test;
-
-mod action;
-
-pub use action::{Actions, HandleAction};
-pub use application::data::dispatch::Dispatch;
-pub use database::table::{
-    ui_builder::BuildTable, 
-    data::TableData, 
-    join::structure::OperationSelect
-};
-
-pub mod application;
-pub use application::{
-    authenticate::StaffCredential, 
-    field
-};
-pub use application::{
-    component as app_component, 
-    operation, 
-    states
-};
-
-pub mod ws;
-pub use egui::accesskit::Toggled;
-pub use egui::{
-    CentralPanel, Margin, ScrollArea
-};
-pub use egui::{
-    Color32, 
-    FontId, 
-    Frame, 
-    RichText, 
-    TextEdit
-};
-pub use egui_kittest::{kittest::{Node, Queryable}, Harness};
-pub use ws::receive::Handle;
-
-use application::states::preoperative::menu::action as PreoperativeMenuAction;
-pub use application::operation::menu::preoperative::Action as PreoperativeActions;
-pub use application::operation::menu::preoperative::MenuOptions as PreoperativeMenuActionOptions;
-
-
-
-use application::operation::State as OperationStates;
-pub use application::states::preoperative::menu as PreoperativeMenu;
-
-use application::states::intraoperative::menu as IntraoperativeMenu;
-
-pub mod temporary;
-
-pub mod cipher;
-
-pub mod component;
-
-use component::design;
-
-use chrono::Local;
-pub use eframe::{
-    egui, 
-    App
-};
-pub use ewebsock::{
-    self, 
-    WsReceiver, 
-    WsSender
-};
-pub use serde::{
-    Deserialize, 
-    Serialize
-};
-#[derive(Deserialize, Debug, Serialize)]
-struct SendMessage {
-    level: String,
-    method: String,
-    data: Option<serde_json::Value>,
-    staff_credential: Option<StaffCredential>,
-    action: Option<action::Actions>
-}
-#[derive(Deserialize, Debug, Serialize)]
-#[serde(rename_all = "lowercase")]
-enum DatabaseTable {
-    All,
-    Equipment,
-    Room,
-    Tool,
-    Staff,
-    ToolReservation,
-    ToolDesignatedRoom,
-    ToolInspector,
-    Patient,
-    Operation,
-    PatientWardRoom,
-    PatientWardAssistant,
-    OperationStaff,
-    OperationTool
-}
-#[derive(Deserialize, Debug, Serialize, Default)]
-struct PreRunning {
-    search_operation: String,
-    search_operation_result: Vec<OperationSelect>,
-} 
-
-const DARKMODE_RED_HIGHLIGHT: Color32 = Color32::from_rgb(45, 8, 10);
-#[allow(dead_code)]
-const DEBUGCOLOR: Color32 = Color32::GOLD;
-const SIDEPANELSIZE: f32 = 250.0;
-const FORM_BACKGROUND: Color32 = Color32::from_rgb(39, 45, 45);
-const FORM_TEXT_SIZE: f32 = 30.0;
-
-pub struct OperationApp {
-    data: Option<TableData>,
-    sender: WsSender,
-    receiver: WsReceiver,
-    search: PreRunning,
-    staff: Option<StaffCredential>,
-    credential_panel: states::Login,
-    operation_id: Option<i32>,
-    require_update: bool,
-    operation_state: Option<application::operation::State>,
-    pub app_tx: std::sync::mpsc::Sender<Actions>,
-    pub app_rx: std::sync::mpsc::Receiver<Actions>
-}
-
-impl OperationApp {
-    fn new() -> Self {
+#[test]
+fn test_login_screen() {
+    let harness = Harness::builder()
+    .with_size(egui::Vec2::new(300.0, 200.0))
+    .build(|ctx| {
+        let mut app = OperationApp::new();
         
-        let options = ewebsock::Options::default();
-        let (sender, receiver) = ewebsock::connect("ws://192.168.1.8:8080", options).unwrap();
-
-        let (app_tx, app_rx) = std::sync::mpsc::channel();
-
-        OperationApp {
-            data: None,
-            sender,
-            receiver,
-            search: PreRunning::default(),
-            staff: None,
-            credential_panel: states::Login {
-                field: field::Login {
-                    email: "".to_string(),
-                    password: "".to_string(),
-                    session_token: "".to_string()
-                },
-                state: design::State::Default,
-            },
-            operation_id: None,
-            require_update: false,
-            operation_state: None,
-            app_tx,
-            app_rx,
-        }
-    }
-}
-impl App for OperationApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         
-        self.handle_incoming();
+        app.handle_incoming();
 
-        self.handle_action();
+        app.handle_action();
 
-        if let Some(id) = self.operation_id {
-            self.select_operation(&id);
+        if let Some(id) = app.operation_id {
+            app.select_operation(&id);
         }
 
-        if self.staff.is_none() {
-            app_component::login(&ctx, &mut self.credential_panel, &mut self.sender, &self.staff);
+        if app.staff.is_none() {
+            app_component::login(&ctx, &mut app.credential_panel, &mut app.sender, &app.staff);
         } 
 
-        if self.staff.is_some() {
+        if app.staff.is_some() {
             egui::TopBottomPanel::top("top").show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    if let Some(staff_credential) = self.staff.clone() {
+                    if let Some(staff_credential) = app.staff.clone() {
                         ui.horizontal(|ui| {
                             ui.label("name");
                             ui.label(staff_credential.full_name.clone());
@@ -183,7 +34,7 @@ impl App for OperationApp {
                             ui.label(staff_credential.email.clone());
                         });
                         if ui.button("logout").clicked() {
-                            self.credential_panel = states::Login {
+                            app.credential_panel = states::Login {
                                 field: field::Login {
                                     email: "".to_string(),
                                     password: "".to_string(),
@@ -191,14 +42,14 @@ impl App for OperationApp {
                                 },
                                 state: design::State::Default,
                             };
-                            self.search = PreRunning {
+                            app.search = PreRunning {
                                 search_operation: "".to_string(),
                                 search_operation_result: vec![]
                             };
-                            self.staff = None;
-                            self.operation_id = None;
-                            self.data = None;
-                            self.operation_state = None;
+                            app.staff = None;
+                            app.operation_id = None;
+                            app.data = None;
+                            app.operation_state = None;
                         }
                     }
                     let current_time = Local::now(); 
@@ -225,9 +76,9 @@ impl App for OperationApp {
                 let left_panel_rect = rect.center();
                 ui.set_max_width(SIDEPANELSIZE);
                 
-                if let Some(operation_state) = &self.operation_state {
+                if let Some(operation_state) = &app.operation_state {
                     if let operation::State::Preoperation(_) = operation_state {
-                        if let Some(operation) = self.get_selected_preoperation() {
+                        if let Some(operation) = app.get_selected_preoperation() {
                             ui.horizontal_wrapped(|ui| {
                                 ui.heading("OPERATION: ");       
                                 ui.add_enabled(false, 
@@ -269,7 +120,7 @@ impl App for OperationApp {
                 .show(ui, |ui| {
                     ui.set_height(ui.available_height());
 
-                    if self.operation_state.is_some() {
+                    if app.operation_state.is_some() {
                         Frame::none()
                         .inner_margin(Margin::same(20.0))
                         .show(ui, |ui| {
@@ -281,7 +132,7 @@ impl App for OperationApp {
                     .id_salt("action_log")
                     .auto_shrink([false; 2]) 
                     .show(ui, |ui| {
-                        if let Some(action_log) = self.get_action_log_operation() {
+                        if let Some(action_log) = app.get_action_log_operation() {
                             for row in &action_log {
                                 ui.label(row.label.clone());
                                 ui.horizontal(|ui| {
@@ -299,25 +150,25 @@ impl App for OperationApp {
                 });
             });
             egui::CentralPanel::default().show(ctx, |ui| {
-                if self.staff.is_some() {
+                if app.staff.is_some() {
                     ui.add_space(80.0);
                     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-                        if self.operation_state.is_none() {
+                        if app.operation_state.is_none() {
                             ui.label("🔎 SEARCH OPERATION");
                             
-                            if ui.text_edit_singleline(&mut self.search.search_operation).changed() || 
-                            self.require_update == true {
-                                let _ = &self.filter_operation();
-                                self.require_update = false;
+                            if ui.text_edit_singleline(&mut app.search.search_operation).changed() || 
+                            app.require_update == true {
+                                let _ = &app.filter_operation();
+                                app.require_update = false;
                             }
             
                             ui.separator();
             
-                            if self.search.search_operation_result.is_empty() && 
-                            self.search.search_operation != "" {
+                            if app.search.search_operation_result.is_empty() && 
+                            app.search.search_operation != "" {
                                 ui.label("💤 No results found");
-                            } else if self.data.is_some() {
-                                if !self.search.search_operation_result.is_empty() {
+                            } else if app.data.is_some() {
+                                if !app.search.search_operation_result.is_empty() {
                                     Frame::none()
                                     .fill(FORM_BACKGROUND)
                                     .rounding(20.0)
@@ -327,7 +178,7 @@ impl App for OperationApp {
                                             columns[0].vertical_centered(|ui| {
                                                 ui.add_space(20.0);
                                                 ui.horizontal_centered(|ui| {
-                                                    self.build_table(ui, database::table::window::WindowTable::OperationSelect(Some(self.search.search_operation_result.clone())));
+                                                    app.build_table(ui, database::table::window::WindowTable::OperationSelect(Some(app.search.search_operation_result.clone())));
                                                 });
                                             });
                                         });
@@ -340,10 +191,10 @@ impl App for OperationApp {
                             Some(data), 
                             app_tx
                         ) = (
-                            &mut self.operation_state, 
-                            &self.operation_id, 
-                            &self.data, 
-                            &self.app_tx
+                            &mut app.operation_state, 
+                            &app.operation_id, 
+                            &app.data, 
+                            &app.app_tx
                         ) {
                             match operation_state {
                                 OperationStates::Preoperation(menu) => {
@@ -368,13 +219,13 @@ impl App for OperationApp {
                                     } else if let Some(selected_menu) = &menu.selected_menu {
                                         match selected_menu {
                                             PreoperativeMenuActionOptions::ToolReady => {
-                                                PreoperativeMenuAction::tool_checklist_area(self, ui);
+                                                PreoperativeMenuAction::tool_checklist_area(&mut app, ui);
                                             },
                                             PreoperativeMenuActionOptions::Staff => {
-                                                PreoperativeMenuAction::staff_list_area(self, ui);
+                                                PreoperativeMenuAction::staff_list_area(&mut app, ui);
                                             },
                                             PreoperativeMenuActionOptions::EquipmentRequested => {
-                                                PreoperativeMenuAction::equipment_requested_area(self, ui);
+                                                PreoperativeMenuAction::equipment_requested_area(&mut app, ui);
                                             },
                                         }
                                     
@@ -395,11 +246,11 @@ impl App for OperationApp {
                     sender, 
                     staff_credential
                 ) = (
-                    &mut self.get_selected_preoperation(), 
-                    &mut self.operation_state,
-                    &self.operation_id,
-                    &mut self.sender, 
-                    &self.staff
+                    &mut app.get_selected_preoperation(), 
+                    &mut app.operation_state,
+                    &app.operation_id,
+                    &mut app.sender, 
+                    &app.staff
                 ) {
                     if let OperationStates::Preoperation(menu) = operation_state {
                         PreoperativeMenu::init(ui, menu, operation, operation_id, sender, staff_credential);
@@ -411,11 +262,11 @@ impl App for OperationApp {
                     sender, 
                     staff_credential
                 ) = (
-                    &mut self.get_selected_intraoperation(), 
-                    &mut self.operation_state,
-                    &self.operation_id,
-                    &mut self.sender, 
-                    &self.staff
+                    &mut app.get_selected_intraoperation(), 
+                    &mut app.operation_state,
+                    &app.operation_id,
+                    &mut app.sender, 
+                    &app.staff
                 ) {
                     if let OperationStates::Intraoperation(menu) = operation_state {
                         IntraoperativeMenu::init(ui, menu, operation, operation_id, sender, staff_credential);
@@ -424,7 +275,7 @@ impl App for OperationApp {
                 ui.add_space(40.0);
             });
 
-            if let Some(operation_state) = &mut self.operation_state {
+            if let Some(operation_state) = &mut app.operation_state {
                 egui::TopBottomPanel::bottom("action_option").show(ctx, |ui| {
                     match operation_state {
                         operation::State::Preoperation(menu) => {
@@ -457,18 +308,9 @@ impl App for OperationApp {
         }
 
         ctx.request_repaint();
-    }
-}
-
-fn main() {
-    let native_options: eframe::NativeOptions = eframe::NativeOptions::default();
-    let app_thread = run_app(native_options);
-
-}
-
-fn run_app(native_options: eframe::NativeOptions) -> Result<(), eframe::Error> {
-    eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
-        let app = OperationApp::new();
-        Ok(Box::new(app))
-    }))
+    
+    });
+    let login_check = harness.query_by_label("login");
+    
+    assert!(login_check.is_some(), "login check is none!")
 }
