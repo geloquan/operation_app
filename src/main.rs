@@ -458,17 +458,14 @@ impl App for OperationApp {
 
         ctx.request_repaint();
     }
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        println!("ahh exit()");
+    }
 }
 
 fn main() {
-    let native_options: eframe::NativeOptions = eframe::NativeOptions::default();
-    let app_thread = run_app(native_options);
-
-}
-
-fn run_app(native_options: eframe::NativeOptions) -> Result<(), eframe::Error> {
-    eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
+    let _ = eframe::run_native("OPERATION APP", eframe::NativeOptions::default(), Box::new(|cc| {
         let app = OperationApp::new();
         Ok(Box::new(app))
-    }))
+    }));
 }
