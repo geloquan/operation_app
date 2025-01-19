@@ -128,7 +128,7 @@ impl OperationApp {
     fn new() -> Self {
         
         let options = ewebsock::Options::default();
-        let (sender, receiver) = ewebsock::connect("ws://192.168.1.8:8080", options).unwrap();
+        let (sender, receiver) = ewebsock::connect("ws://192.168.1.9:8080", options).unwrap();
 
         let (app_tx, app_rx) = std::sync::mpsc::channel();
 
@@ -336,7 +336,7 @@ impl App for OperationApp {
                             }
                         } else if let (
                             Some(operation_state), 
-                            Some(_), 
+                            Some(operation_id), 
                             Some(data), 
                             app_tx
                         ) = (
@@ -352,7 +352,7 @@ impl App for OperationApp {
                                         match selected_action {
                                             PreoperativeActions::AddRequirement(s) => {
                                                 ui.heading("New Requirement Form");
-                                                PreoperativeMenuAction::add_requirement_area(s, data, ui, ctx, app_tx);
+                                                PreoperativeMenuAction::add_requirement_area(s, data, ui, ctx, app_tx, operation_id);
                                             },
                                             PreoperativeActions::RemoveRequirement(s) => {
                                                 ui.heading("Remove Requirement");
@@ -441,6 +441,7 @@ impl App for OperationApp {
                                     },
                                 }
                                 if selected_action.is_none() {
+                                    
                                 } else {
                                     
                                 }

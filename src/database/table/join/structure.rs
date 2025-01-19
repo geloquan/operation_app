@@ -39,5 +39,5 @@ pub struct EquipmentRequestedProperty {
     pub id: i32,
     pub equipment_name: String,
     pub staff_name: String,
-    pub count: i32,
+    pub to_claim_staff_name: String
 }

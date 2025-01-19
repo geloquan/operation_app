@@ -29,5 +29,6 @@ pub enum Tables {
     Frontdesk,
     AlertFrontdesk,
     AlertStaff,
-    ActionLog
+    ActionLog,
+    EquipmentRequest
 }

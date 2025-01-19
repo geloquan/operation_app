@@ -180,15 +180,13 @@ impl BuildTable for OperationApp {
                 let _ = TableBuilder::new(ui)
                 .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
                 .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
-                .column(Column::auto().resizable(true).at_least(150.0).at_most(200.0))
-                .auto_shrink(true)
+                 .auto_shrink(true)
                 .striped(true)
                 .max_scroll_height(300.0)
                 .header(20.0, |mut header| {
                     let headings = [
                         "Name",
-                        "Requested by",
-                        "Qty",
+                        "Requested by"
                     ];                
                     for title in headings {
                         header.col(|ui| {
@@ -206,9 +204,6 @@ impl BuildTable for OperationApp {
                             });
                             row.col(|ui: &mut Ui| {
                                 ui.add(Label::new(content.staff_name.clone()));
-                            });
-                            row.col(|ui: &mut Ui| {
-                                ui.add(Label::new(content.count.clone().to_string()));
                             });
                         });
                     }

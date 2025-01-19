@@ -297,6 +297,7 @@ impl OperationApp {
             let equipment_request = data.equipment_request.read().unwrap();
             let equipment = data.equipment.read().unwrap();
             let staff = data.staff.read().unwrap();
+
             let equipment_requests: Option<Vec<EquipmentRequestedProperty>> = Some(
                 equipment_request
                 .iter()
@@ -316,9 +317,18 @@ impl OperationApp {
                                     s.last_name.clone().unwrap_or_else(|| "N/A".to_string())
                                 ))
                                 .unwrap_or_else(|| "N/A".to_string());
+                            
+                            let to_claim_staff_name = staff.iter()
+                            .find(|s| er.to_claim_staff_id.map_or(false, |id| id == s.id.unwrap_or(0)))
+                            .map(|s| format!(
+                                "{} {}",
+                                s.first_name.clone().unwrap_or_else(|| "N/A".to_string()),
+                                s.last_name.clone().unwrap_or_else(|| "N/A".to_string())
+                            ))
+                            .unwrap_or_else(|| "N/A".to_string());
         
                             let equipment_name = equipment.iter()
-                                .find(|e| er.source_staff_id.map_or(false, |id| id == e.id.unwrap_or(0)))
+                                .find(|e| er.equipment_id.map_or(false, |id| id == e.id.unwrap_or(0)))
                                 .map(|s| s.name.clone().unwrap_or_else(|| "N/A".to_string()))
                                 .unwrap_or_else(|| "N/A".to_string());
         
@@ -326,7 +336,7 @@ impl OperationApp {
                                 id: equipment_id,
                                 equipment_name,
                                 staff_name: staff_full_name,
-                                count: 0,
+                                to_claim_staff_name: to_claim_staff_name
                             })
                         }
                         None => None,

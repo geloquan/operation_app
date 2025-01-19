@@ -25,7 +25,8 @@ pub fn add_requirement_area(
     data: &TableData, 
     ui: &mut egui::Ui, 
     ctx: &Context, 
-    app_tx: &Sender<Actions>
+    app_tx: &Sender<Actions>,
+    operation_id: &i32
 ) {
     if let Some(s) = s {
         match data.equipment.read() {
@@ -117,6 +118,9 @@ pub fn add_requirement_area(
                                         if let Some(equipment_name) = &equipment.name {
                                             if *equipment_name == s.name {
                                                 s.tool_id = equipment.id;
+
+                                                s.operation_id = *operation_id;
+                                                
                                                 let _ = app_tx.send(
                                                     Actions::Preoperation(
                                                         Preoperation::AddNewEquipmentRequirement(
