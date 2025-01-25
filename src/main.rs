@@ -402,7 +402,7 @@ impl App for OperationApp {
                     &self.staff
                 ) {
                     if let OperationStates::Preoperation(menu) = operation_state {
-                        PreoperativeMenu::init(ui, menu, operation, operation_id, sender, staff_credential);
+                        PreoperativeMenu::init(ui, menu, operation, operation_id, sender, staff_credential, ctx);
                     }
                 } else if let (
                     Some(operation), 
@@ -425,35 +425,39 @@ impl App for OperationApp {
             });
 
             if let Some(operation_state) = &mut self.operation_state {
-                egui::TopBottomPanel::bottom("action_option").show(ctx, |ui| {
-                    match operation_state {
-                        operation::State::Preoperation(menu) => {
-                            if let (Some(selected_menu), selected_action) = (menu.selected_menu.as_mut(), &mut menu.selected_action) {
-                                match selected_menu {
-                                    PreoperativeMenuActionOptions::Staff => {
+                match operation_state {
+                    operation::State::Preoperation(menu) => {
+                        if let (Some(selected_menu), selected_action) = (menu.selected_menu.as_mut(), &mut menu.selected_action) {
+                            match selected_menu {
+                                PreoperativeMenuActionOptions::Staff => {
+                                    egui::TopBottomPanel::bottom("action_option").show(ctx, |ui| {
                                         PreoperativeMenuAction::staff_list_action_options(ui, selected_action);
-                                    },
-                                    PreoperativeMenuActionOptions::ToolReady => {
+                                    });
+                                },
+                                PreoperativeMenuActionOptions::ToolReady => {
+                                    egui::TopBottomPanel::bottom("action_option").show(ctx, |ui| {
                                         PreoperativeMenuAction::tool_ready_action_options(ui, selected_action);
-                                    },
-                                    PreoperativeMenuActionOptions::EquipmentRequested => {
+                                    });
+                                },
+                                PreoperativeMenuActionOptions::EquipmentRequested => {
+                                    egui::TopBottomPanel::bottom("action_option").show(ctx, |ui| {
                                         PreoperativeMenuAction::equipment_requested_options(ui, selected_action);
-                                    },
-                                }
-                                if selected_action.is_none() {
-                                    
-                                } else {
-                                    
-                                }
+                                    });
+                                },
+                            }
+                            if selected_action.is_none() {
+                                
                             } else {
                                 
                             }
-                        
-                        },
-                        operation::State::Intraoperation(_) => {},
-                        operation::State::Postoperation => todo!(),
-                    }
-                });
+                        } else {
+                            
+                        }
+                    
+                    },
+                    operation::State::Intraoperation(_) => {},
+                    operation::State::Postoperation => todo!(),
+                }
             } 
         }
 

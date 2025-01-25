@@ -21,13 +21,16 @@ use crate::{
 
 pub mod action;
 
+use egui::{Align2, Window};
+
 pub fn init(
     ui:&mut egui::Ui, 
     menu: &mut Menu, 
     operation: &mut Init, 
     operation_id: &Option<i32>, 
     sender: &mut WsSender, 
-    staff_credential: &Option<StaffCredential>
+    staff_credential: &Option<StaffCredential>,
+    ctx: &egui::Context
 ) {
     Frame::none()
     .inner_margin(Margin::same(10.))
@@ -137,23 +140,39 @@ pub fn init(
 
             ascend_response.iter().for_each(|v| {
                 if v.clicked() {
-                    if let Some(operation_id) = &operation_id {
-                        let operation_ascend = OperationAscend {
-                            operation_id: *operation_id,
-                            operation_status: OperationStatus::PreOperative,
-                            staff_credential: staff_credential.clone().unwrap(),
-                        };
-                        let request_json = serde_json::to_string(&SendMessage {
-                            level: "Operation".to_string(),
-                            method: "Ascend".to_string(),
-                            data: Some(serde_json::to_value(&operation_ascend).unwrap()),
-                            staff_credential: staff_credential.clone(),
-                            action: None
-                        }).unwrap();
-                        sender.send(ewebsock::WsMessage::Text(request_json.to_string()));
-                    };
+                    //if let Some(operation_id) = &operation_id {
+                    //    let operation_ascend = OperationAscend {
+                    //        operation_id: *operation_id,
+                    //        operation_status: OperationStatus::PreOperative,
+                    //        staff_credential: staff_credential.clone().unwrap(),
+                    //    };
+                    //    let request_json = serde_json::to_string(&SendMessage {
+                    //        level: "Operation".to_string(),
+                    //        method: "Ascend".to_string(),
+                    //        data: Some(serde_json::to_value(&operation_ascend).unwrap()),
+                    //        staff_credential: staff_credential.clone(),
+                    //        action: None
+                    //    }).unwrap();
+                    //    sender.send(ewebsock::WsMessage::Text(request_json.to_string()));
+                    //};
+
                 };
             });
+        });
+        
+                    
+    let width = 500.0;
+    let height = 250.0;
+
+    Window::new("STAFF LOGIN")
+        .default_open(true)
+        .resizable(false)
+        .collapsible(false)
+        .fixed_size([width, height])
+        .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
+        .enabled(true)
+        .show(ctx, |ui| {
+
         });
     });
 }
