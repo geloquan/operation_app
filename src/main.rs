@@ -141,7 +141,7 @@ impl App for OperationApp {
             }
         });
         egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
-            ui.label("Hello World!");
+            ui.label("Hello Worled!");
         });
         egui::CentralPanel::default().show(ctx, |ui| {});
     }
