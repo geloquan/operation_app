@@ -45,105 +45,58 @@ struct ReceiveMessage {
     data: String,
 }
 
+
+mod services;
+
 struct OperationApp {
-    rx: tokio::sync::mpsc::Receiver<String>,
-    tx: tokio::sync::mpsc::Sender<String>,
-    sender: WsSender,
-    receiver: WsReceiver,
-    //central_window: OperationWindow,
+    service: services::Service
 }
 
 impl OperationApp {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let (tx, rx) = tokio::sync::mpsc::channel(32);
-        
-        let options = ewebsock::Options::default();
-        let (mut sender, receiver) = ewebsock::connect("ws://127.0.0.15:8080", options).unwrap();
+        //let request_json = serde_json::to_string(&SendMessage {
+        //    level: "operation".to_string(),
+        //    method: "initial".to_string(),
+        //    data: Some(json!({"content": "Hello from button('Send Message')!"})),
+        //}).unwrap();
+        //sender.send(ewebsock::WsMessage::Text(request_json));
 
-        let request_json = serde_json::to_string(&SendMessage {
-            level: "operation".to_string(),
-            method: "initial".to_string(),
-            data: Some(json!({"content": "Hello from button('Send Message')!"})),
-        }).unwrap();
-        sender.send(ewebsock::WsMessage::Text(request_json));
+        let service = services::Service::init();
 
         OperationApp {
-            rx,
-            tx,
-            sender,
-            receiver,
+            service
         }
     }
 }
 
 impl App for OperationApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if let Some(msg) = self.receiver.try_recv() {
-            match msg {
-                ewebsock::WsEvent::Opened => {
-                    
-                },
-                ewebsock::WsEvent::Message(text) => {
-                    println!("msg receieved: {:?}", text);
-                    match text {
-                        ewebsock::WsMessage::Binary(vec) => todo!(),
-                        ewebsock::WsMessage::Text(text) => {
-                            match serde_json::from_str::<ReceiveMessage>(&text) {
-                                Ok(message) => {
-                                    match message.operation {
-                                        Operation::Initialize => {},
-                                        Operation::Update => {},
-                                    }
-                                },
-                                Err(_) => {
-                                    
-                                },
-                            }
-                        },
-                        ewebsock::WsMessage::Unknown(_) => todo!(),
-                        ewebsock::WsMessage::Ping(vec) => todo!(),
-                        ewebsock::WsMessage::Pong(vec) => todo!(),
-                    }
-                },
-                ewebsock::WsEvent::Error(_) => {
-                    let options = ewebsock::Options::default();
-                    let (mut sender, receiver) = ewebsock::connect("ws://127.0.0.15:8080", options).unwrap();
-                    
-                    let request_json = serde_json::to_string(&SendMessage {
-                        level: "operation".to_string(),
-                        method: "initial".to_string(),
-                        data: Some(json!({"content": "Hello from button('Send Message')!"})),
-                    }).unwrap();
-                    sender.send(ewebsock::WsMessage::Text(request_json));
-
-                    self.sender = sender;
-                    self.receiver = receiver;
-                },
-                ewebsock::WsEvent::Closed => {
-
-                },
-            }
-        }
-
-        egui::SidePanel::left("left").show(ctx, |ui| {
-            ui.label("OPERATION: "); //op.label
-            ui.label("STATUS: "); //op.status
-            ui.label("ETA: "); //op.start -> op.end
-            ui.label("ROOM: ");
-            ui.label("ROOM ALIAS: ");
-            if ui.button("send alert").clicked() {
-                let request_json = serde_json::to_string(&SendMessage {
-                    level: "operation".to_string(),
-                    method: "alert".to_string(),
-                    data: Some(json!({"content": "Hello from button('Send Message')!"})),
-                }).unwrap();
-                self.sender.send(ewebsock::WsMessage::Text(request_json));
-            }
-        });
+        egui::SidePanel::left("left").show(ctx, |ui| {});
         egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
             ui.label("Hello Worled!");
         });
         egui::CentralPanel::default().show(ctx, |ui| {});
+    }
+}
+#[derive(Debug)]
+pub struct CodeExample {
+    name: String,
+    age: u32,
+}
+impl Demo for CodeExample {
+    fn name(&self) -> &'static str {
+        "🖮 Code Example"
+    }
+
+    fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
+        use crate::View;
+        egui::Window::new(self.name())
+            .open(open)
+            .min_width(375.0)
+            .default_size([390.0, 500.0])
+            .scroll(false)
+            .resizable([true, false]) // resizable so we can shrink if the text edit grows
+            .show(ctx, |ui| self.ui(ui));
     }
 }
 
