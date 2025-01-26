@@ -2,7 +2,7 @@ mod server;
 mod app;
 
 trait Init {
-    fn init(&self) -> Result<(), &'static str>;
+    fn init() -> Result<Self, &'static str> where Self: Sized;
 }
 
 pub(crate) struct Service {
@@ -10,11 +10,11 @@ pub(crate) struct Service {
     app: app::Comms
 }
 
-impl Init for Service {
-    fn init(&self) -> Result<(), &'static str> {
-        self.server = server::Comms::init(&self).map_err("server err");
-        self.app = app::Comms::init(&self).map_err("app err");
+impl Service {
+    pub fn init() -> Result<Self, &'static str> {
+        let server = server::Comms::init().map_err(|_| "server err")?;
+        let app = app::Comms::init().map_err(|_| "app err")?;
 
-        Ok(())
+        Ok(Self { server, app })
     }
 }

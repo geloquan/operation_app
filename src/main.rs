@@ -48,8 +48,11 @@ struct ReceiveMessage {
 
 mod services;
 
+mod components;
+
 struct OperationApp {
-    service: services::Service
+    service: services::Service,
+    login: components::admin_data::Login
 }
 
 impl OperationApp {
@@ -61,44 +64,48 @@ impl OperationApp {
         //}).unwrap();
         //sender.send(ewebsock::WsMessage::Text(request_json));
 
-        let service = services::Service::init();
+        let service = services::Service::init().expect(&"ggs");
+        let login = components::admin_data::Login::default();
 
         OperationApp {
-            service
+            service,
+            login
         }
     }
 }
 
 impl App for OperationApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::SidePanel::left("left").show(ctx, |ui| {});
-        egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
-            ui.label("Hello Worled!");
+        //egui::SidePanel::left("left").show(ctx, |ui| {});
+        //egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
+        //    ui.label("Hello Worled!");
+        //});
+        egui::CentralPanel::default().show(ctx, |ui| {
+            self.login.show(ctx);
         });
-        egui::CentralPanel::default().show(ctx, |ui| {});
     }
 }
-#[derive(Debug)]
-pub struct CodeExample {
-    name: String,
-    age: u32,
-}
-impl Demo for CodeExample {
-    fn name(&self) -> &'static str {
-        "🖮 Code Example"
-    }
-
-    fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
-        use crate::View;
-        egui::Window::new(self.name())
-            .open(open)
-            .min_width(375.0)
-            .default_size([390.0, 500.0])
-            .scroll(false)
-            .resizable([true, false]) // resizable so we can shrink if the text edit grows
-            .show(ctx, |ui| self.ui(ui));
-    }
-}
+//#[derive(Debug)]
+//pub struct CodeExample {
+//    name: String,
+//    age: u32,
+//}
+//impl Demo for CodeExample {
+//    fn name(&self) -> &'static str {
+//        "🖮 Code Example"
+//    }
+//
+//    fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
+//        use crate::View;
+//        egui::Window::new(self.name())
+//            .open(open)
+//            .min_width(375.0)
+//            .default_size([390.0, 500.0])
+//            .scroll(false)
+//            .resizable([true, false]) // resizable so we can shrink if the text edit grows
+//            .show(ctx, |ui| self.ui(ui));
+//    }
+//}
 
 #[tokio::main]
 async fn main() {

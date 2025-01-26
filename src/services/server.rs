@@ -5,12 +5,9 @@ pub(crate) struct Comms {
 }
 
 impl super::Init for Comms {
-    fn init(&self) -> Result<(), &'static str> {
+    fn init() -> Result<Self, &'static str> {
         let (sender, receiver) = tokio::sync::mpsc::channel(32);
         
-        self.receiver = receiver;
-        self.sender = sender;
-
-        Ok(())
+        Ok(Self { receiver, sender })
     } 
 }

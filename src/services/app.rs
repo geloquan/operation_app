@@ -5,9 +5,9 @@ pub(crate) struct Comms {
 }
 
 impl super::Init for Comms {
-    fn init(&self) -> Result<(), &'static str> {
-        (self.sender, self.receiver) = ewebsock::connect("ws://127.0.0.15:8080", ewebsock::Options::default()).unwrap();
+    fn init() -> Result<Self, &'static str> {
+        let (sender, receiver) = ewebsock::connect("ws://127.0.0.15:8080", ewebsock::Options::default()).unwrap();
         
-        Ok(())
+        Ok(Self { receiver, sender })
     }
 }
