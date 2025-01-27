@@ -1,7 +1,8 @@
 
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike, Utc};
-use eframe::{egui, App, Frame};
-use egui::{mutex::Mutex, Color32, Label, RichText, Sense};
+use components::login;
+use eframe::{egui, App};
+use egui::{mutex::Mutex, Color32, Id, Label, RichText, Sense};
 use egui_extras::{TableBuilder, Column};
 use ewebsock::{self, WsReceiver, WsSender};
 use serde::{Deserialize, Serialize};
@@ -50,13 +51,16 @@ mod services;
 
 mod components;
 
+mod views;
+
 struct OperationApp {
     service: services::Service,
-    login: components::admin_data::Login
+    view: std::rc::Rc<std::cell::RefCell<views::View>>,
+    login: components::login::Login,
 }
 
 impl OperationApp {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> OperationApp {
         //let request_json = serde_json::to_string(&SendMessage {
         //    level: "operation".to_string(),
         //    method: "initial".to_string(),
@@ -65,10 +69,12 @@ impl OperationApp {
         //sender.send(ewebsock::WsMessage::Text(request_json));
 
         let service = services::Service::init().expect(&"ggs");
-        let login = components::admin_data::Login::default();
+        let view =  std::rc::Rc::new(std::cell::RefCell::new(views::View::default()));
+        let login = components::login::Login::new(std::rc::Rc::clone(&view));
 
         OperationApp {
             service,
+            view,
             login
         }
     }
@@ -76,13 +82,52 @@ impl OperationApp {
 
 impl App for OperationApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        //egui::SidePanel::left("left").show(ctx, |ui| {});
-        //egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
-        //    ui.label("Hello Worled!");
-        //});
-        egui::CentralPanel::default().show(ctx, |ui| {
-            self.login.show(ctx);
-        });
+        let view: views::View = self.login.get_view();
+        match view {
+            views::View::Login => {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    self.login.show(ctx);
+                });
+            },
+            views::View::OperationSelect => {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    //let mut login_form = components::operation::select::LoginForm::LoginForm::new(components::operation::select::LoginForm::State::Default, "email".to_string(), "password".to_string());
+                });
+            },
+            views::View::Operation(state) => {
+                match state {
+                    views::State::Preoperation => {
+                        egui::TopBottomPanel::top(Id::new("side-top")).show(ctx, |ui| {
+                            
+                        });
+                        egui::TopBottomPanel::bottom(Id::new("side-bottom")).show(ctx, |ui| {
+                            
+                        });
+                        egui::SidePanel::left(Id::new("side-left")).show(ctx, |ui| {
+                            
+                        });
+                        egui::CentralPanel::default().show(ctx, |ui| {
+
+                        });
+                        egui::SidePanel::right(Id::new("side-right")).show(ctx, |ui| {
+                            
+                        });
+                        egui::TopBottomPanel::bottom(Id::new("side-bottom-bottom")).show(ctx, |ui| {
+                            
+                        });
+                        egui::TopBottomPanel::top(Id::new("side-top-top")).show(ctx, |ui| {
+                            
+                        });
+                    },
+                    views::State::Intraoperation => {
+                        
+                    },
+                    views::State::Postoperation => {
+                        
+                    },
+                }
+            },
+        }
     }
 }
 //#[derive(Debug)]
