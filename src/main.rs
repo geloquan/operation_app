@@ -1,10 +1,13 @@
 
+use std::sync::Arc;
+
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike, Utc};
 use components::login;
 use eframe::{egui, App};
-use egui::{mutex::Mutex, Color32, Id, Label, RichText, Sense};
+use egui::{Color32, Id, Label, RichText, Sense};
 use egui_extras::{TableBuilder, Column};
 use ewebsock::{self, WsReceiver, WsSender};
+use futures::channel::mpsc;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -54,11 +57,10 @@ mod components;
 mod views;
 
 struct OperationApp {
-    service: services::Service,
     view: std::rc::Rc<std::cell::RefCell<views::View>>,
     login: components::login::Login,
 }
-
+// , data, middleman_sender
 impl OperationApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> OperationApp {
         //let request_json = serde_json::to_string(&SendMessage {
@@ -68,12 +70,10 @@ impl OperationApp {
         //}).unwrap();
         //sender.send(ewebsock::WsMessage::Text(request_json));
 
-        let service = services::Service::init().expect(&"ggs");
         let view =  std::rc::Rc::new(std::cell::RefCell::new(views::View::default()));
         let login = components::login::Login::new(std::rc::Rc::clone(&view));
 
         OperationApp {
-            service,
             view,
             login
         }
@@ -152,11 +152,20 @@ impl App for OperationApp {
 //    }
 //}
 
+#[derive(Debug)]
+struct DataMessage {
+    message: String
+}
 #[tokio::main]
 async fn main() {
     let native_options = eframe::NativeOptions::default();
-    let _ = eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
-        let app = OperationApp::new(cc);
-        Ok(Box::new(app))
-    }));
+
+    let shared_message = std::sync::Arc::new(std::sync::RwLock::new(DataMessage { message: "start".to_owned() }));
+    
+    let service = services::Service::init(shared_message).await;
+
+    //let _ = eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
+    //    let app = OperationApp::new(cc);
+    //    Ok(Box::new(app))
+    //}));
 }
