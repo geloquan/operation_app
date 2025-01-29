@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use chrono::{DateTime, Datelike, NaiveDateTime, Timelike, Utc};
-use components::login;
+use components::{login, operation};
 use eframe::{egui, App};
 use egui::{Color32, Id, Label, RichText, Sense};
 use egui_extras::{TableBuilder, Column};
@@ -10,6 +10,8 @@ use ewebsock::{self, WsReceiver, WsSender};
 use futures::channel::mpsc;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use services::middleman;
+use tokio::sync::mpsc::Sender;
 
 #[derive(Deserialize, Debug, Serialize)]
 struct SendMessage {
@@ -56,13 +58,16 @@ mod components;
 
 mod views;
 
+mod models;
+
 struct OperationApp {
     view: std::rc::Rc<std::cell::RefCell<views::View>>,
     login: components::login::Login,
+    middleman_sender: Sender<services::middleman::Get>, 
 }
 // , data, middleman_sender
 impl OperationApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> OperationApp {
+    pub fn new(cc: &eframe::CreationContext<'_>, middleman_sender: Sender<services::middleman::Get>) -> OperationApp {
         //let request_json = serde_json::to_string(&SendMessage {
         //    level: "operation".to_string(),
         //    method: "initial".to_string(),
@@ -75,7 +80,8 @@ impl OperationApp {
 
         OperationApp {
             view,
-            login
+            login,
+            middleman_sender
         }
     }
 }
@@ -160,12 +166,18 @@ struct DataMessage {
 async fn main() {
     let native_options = eframe::NativeOptions::default();
 
-    let shared_message = std::sync::Arc::new(std::sync::RwLock::new(DataMessage { message: "start".to_owned() }));
+    let stream_database: Arc<std::sync::RwLock<models::StreamDatabase>> = std::sync::Arc::new(
+        std::sync::RwLock::new(
+            models::StreamDatabase::init(
+                models::operation::OperationModel::new(
+                    vec![models::operation::Operation::default()]
+                ))
+            )
+        );
     
-    let service = services::Service::init(shared_message).await;
-
-    //let _ = eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
-    //    let app = OperationApp::new(cc);
-    //    Ok(Box::new(app))
-    //}));
+    let service = services::Service::init(stream_database).await.unwrap();
+    let _ = eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
+        let app = OperationApp::new(cc, service);
+        Ok(Box::new(app))
+    }));
 }

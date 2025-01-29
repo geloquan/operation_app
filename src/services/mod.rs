@@ -7,11 +7,11 @@ use tokio::sync::mpsc::{self, Sender, Receiver};
 
 mod server;
 mod app;
-mod middleman;
+pub mod middleman;
 
 
 trait Init {
-    fn init(message: std::sync::Arc<std::sync::RwLock<crate::DataMessage>>) -> Result<Self, &'static str> where Self: Sized;
+    fn init(message: std::sync::Arc<std::sync::RwLock<super::models::StreamDatabase>>) -> Result<Self, &'static str> where Self: Sized;
 }
 
 pub(crate) struct App {
@@ -26,53 +26,40 @@ pub(crate) struct Service {
 }
 
 impl Service {
-    pub async fn init(message: std::sync::Arc<std::sync::RwLock<crate::DataMessage>>) -> Result<(), &'static str> {
-        let (ui_sender, mut ui_receiver): (Sender<crate::DataMessage>, Receiver<crate::DataMessage>) = mpsc::channel(32);
-        let (middleman_sender, mut middleman_receiver): (Sender<crate::DataMessage>, Receiver<crate::DataMessage>) = mpsc::channel(32);
-        let (server_sender, mut server_receiver): (Sender<crate::DataMessage>, Receiver<crate::DataMessage>) = mpsc::channel(32);
-        let (mut cloud_sender, cloud_receiver) = ewebsock::connect("ws://192.168.1.9:8080", ewebsock::Options::default()).unwrap();
+    pub async fn init(message: Arc<std::sync::RwLock<super::models::StreamDatabase>>) -> Result<Sender<middleman::Get>, &'static str> {
+        let (ui_sender, ui_receiver): (Sender<app::Get>, Receiver<app::Get>) = mpsc::channel(32);
+        let (middleman_sender, middleman_receiver): (Sender<middleman::Get>, Receiver<middleman::Get>) = mpsc::channel(32);
+        let (server_sender, server_receiver): (Sender<server::Get>, Receiver<server::Get>) = mpsc::channel(32);
+        let (cloud_sender, cloud_receiver) = ewebsock::connect("ws://192.168.1.9:8080", ewebsock::Options::default()).unwrap();
     
         let middleman_sender_1 = middleman_sender.clone();
         let ui_message = Arc::clone(&message);
-        let ui_thread = tokio::spawn(async move {
-            let data: Arc<std::sync::RwLock<crate::DataMessage>> = ui_message;
+        let _ui_thread = tokio::spawn(async move {
+            let data: Arc<std::sync::RwLock<super::models::StreamDatabase>> = ui_message;
             let middleman_sender = middleman_sender_1;
-
-            loop {
-                while let Ok(message) = ui_receiver.try_recv() {
-                    println!("ui_receiver got: {:?}", message);
-                    
-                }
-            }
+            
+            let mut app = app::App::new(ui_receiver, middleman_sender, data);
+            app.serve().await
         });
     
         let middleman_message = Arc::clone(&message);
-        let middleman_thread = tokio::spawn(async move {
-            let data: Arc<std::sync::RwLock<crate::DataMessage>> = middleman_message;
+        let ui_sender_1 = ui_sender.clone();
+        let _middleman_thread = tokio::spawn(async move {
+            let data: Arc<std::sync::RwLock<super::models::StreamDatabase>> = middleman_message;
 
-            println!("middleman_thread");
-            loop {
-                while let Ok(message) = middleman_receiver.try_recv() {
-                    println!("middleman_receiver got: {:?}", message);
-                    let mut data = data.write().unwrap();
-                    *data = crate::DataMessage{ message: message.message.to_owned() };
-                }
-
-            }
+            let mut man = middleman::Middleman::new(middleman_receiver, ui_sender_1, server_sender, data);
+            man.serve().await
         });
     
         let middleman_sender_2 = middleman_sender.clone();
-        let server_thread = tokio::spawn(async move {
-            println!("server_thread");
-            server::Server::new(cloud_receiver, cloud_sender, server_receiver, middleman_sender_2).serve();
+        let _server_thread = tokio::spawn(async move {
+            server::Server::new(cloud_receiver, cloud_sender, server_receiver, middleman_sender_2).serve().await
         });
-
-        thread::sleep(Duration::from_millis(1_000));
-        middleman_sender
-            .send(crate::DataMessage {
-                message: "Hello from main".to_string(),
-            }).await;
+        //middleman_sender
+        //    .send(super::models::StreamDatabase {
+        //        message: "Hello from main".to_string(),
+        //    }).await;
         
-        Ok(())
+        Ok(middleman_sender.clone())
     }
 }
