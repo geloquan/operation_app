@@ -1,3 +1,5 @@
+use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
+
 use eframe::glow::MAX_SHADER_STORAGE_BLOCK_SIZE;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio_tungstenite::tungstenite::protocol::frame::coding::Data;
@@ -12,7 +14,8 @@ pub(crate) struct Server {
     receiver: ewebsock::WsReceiver,
     sender: ewebsock::WsSender,
     server_receiver: Receiver<super::server::Get>,
-    middleman_sender: Sender<middleman::Get>
+    middleman_sender: Sender<middleman::Get>,
+    stop_flag: Arc<AtomicBool>, 
 }
 enum Method {
     Crate,
@@ -26,20 +29,22 @@ struct ServerExchangeFormat<'a> {
     metadata: &'a str
 }
 impl Server {
-    pub fn new(receiver: ewebsock::WsReceiver, sender: ewebsock::WsSender, server_receiver: Receiver<super::server::Get>, middleman_sender: Sender<middleman::Get>) -> Self {
+    pub fn new(receiver: ewebsock::WsReceiver, sender: ewebsock::WsSender, server_receiver: Receiver<super::server::Get>, middleman_sender: Sender<middleman::Get>, stop_flag: Arc<AtomicBool>) -> Self {
         Self {
             receiver,
             sender,
             server_receiver,
-            middleman_sender
+            middleman_sender,
+            stop_flag
         }
     }
     
     pub async fn serve(&mut self) {
         println!("Server serving...");
-        loop {
+        while !self.stop_flag.load(Ordering::Relaxed) {
             self.cloud_socket();
             self.server_socket();
+            tokio::task::yield_now().await;
         }
     }
 

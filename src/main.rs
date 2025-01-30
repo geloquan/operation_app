@@ -1,9 +1,11 @@
 
-use std::{cell::RefCell, rc::Rc, sync::{Arc, RwLock}};
+use std::{cell::RefCell, rc::Rc, sync::{Arc, RwLock}, time::Duration};
 
 use eframe::{egui, App};
 use egui::Id;
 use models::{operation::OperationModel, StreamDatabase};
+use services::Service;
+use tokio::time::sleep;
 use widget::Widget;
 
 mod services;
@@ -18,19 +20,20 @@ mod widget;
 
 struct OperationApp {
     view: Rc<RefCell<views::View>>,
-    thread: Rc<RefCell<services::app::App>>,
+    service: Service,
     widget: Widget
 }
 impl OperationApp {
-    pub fn new(cc: &eframe::CreationContext<'_>, thread: Rc<RefCell<services::app::App>>) -> OperationApp {
+    pub fn new(cc: &eframe::CreationContext<'_>, service: Service) -> OperationApp {
 
         let view =  Rc::new(RefCell::new(views::View::default()));
         let widget = Widget::default();
         
         OperationApp {
             view,
-            thread,
-            widget
+            service,
+            widget,
+            
         }
     }
 }
@@ -89,7 +92,8 @@ impl App for OperationApp {
     fn save(&mut self, _storage: &mut dyn eframe::Storage) {}
     
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
-        println!("exit!");
+        self.service.middleman.borrow_mut().abort();
+        self.service.server.borrow_mut().abort();
     }
     
     fn auto_save_interval(&self) -> std::time::Duration {
@@ -126,7 +130,19 @@ async fn main() {
     let service = services::Service::init(stream_database).await.unwrap();
 
     let _ = eframe::run_native("Operation", native_options, Box::new(|cc| {
-        let app = OperationApp::new(cc, service);
+        let app = OperationApp::new(cc,  service);
         Ok(Box::new(app))
     }));
+
+    //service.middleman.borrow_mut().abort();
+    //service.server.borrow_mut().abort();
+    //
+    //// Wait for cancellation to complete
+    //sleep(Duration::from_secs_f32(1.0)).await;
+//
+    //let middleman = service.middleman.borrow_mut().is_finished();
+    //let server = service.server.borrow_mut().is_finished();
+    
+    println!("last exit");
+
 }
