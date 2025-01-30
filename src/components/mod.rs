@@ -1,3 +1,7 @@
+use std::{cell::RefCell, rc::Rc};
+
+use crate::services::app::App;
+
 pub(crate) mod login;
 
 pub(crate) mod operation;
@@ -9,7 +13,7 @@ enum Components {
 }
 
 trait View {
-    fn ui(&mut self, ctx: &egui::Context);
+    fn ui(&mut self, ctx: &egui::Context, thread: &mut Rc<RefCell<App>>);
 }
 
 struct WindowConfig {

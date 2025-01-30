@@ -5,9 +5,17 @@ use operation::OperationModel;
 pub(crate) trait ConfigExecutor {
     fn execute(&mut self, config: Config);
 }
-struct Config {
+pub(crate) struct Config {
     ascending: Option<bool>,
     search: Option<String>
+}
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            ascending: None,
+            search: None
+        }
+    }
 }
 pub mod operation;
 mod tool {
@@ -24,20 +32,12 @@ mod tool {
 
     pub(crate) type ToolModel = Vec<Tool>;
 }
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            ascending: None,
-            search: None
-        }
-    }
-}
 enum Table {
     Operation(Config),
     Tool(Config)
 }
 
-struct Model;
+pub(crate) struct Model;
 
 impl Model {
     //pub fn get<T> (&self, table: Table, stream: Arc<std::sync::RwLock<StreamDatabase>>) -> Result<TableReturn, error::Error> {
@@ -47,10 +47,10 @@ impl Model {
     //    }
     //}
 
-    fn get_operation(&self, config: Config, stream: Arc<std::sync::RwLock<StreamDatabase>>) -> operation::OperationModel {
+    pub fn get_operation(config: Config, stream: &Arc<std::sync::RwLock<StreamDatabase>>) -> operation::OperationModel {
         let binding = stream.write().unwrap();
         let mut operation = binding.operation.write().unwrap();
-        operation.execute1(config)
+        operation.execute_config(config)
         //stream.operation.execute1(config);
         //stream.operation
     }
@@ -78,5 +78,8 @@ impl StreamDatabase {
         Self {
             operation: Arc::new(RwLock::new(operation))
         }
+    }
+    pub fn get_operation(&self) -> operation::OperationModel {
+        self.operation.read().unwrap().clone()
     }
 }

@@ -2,14 +2,14 @@ use serde_json::error;
 
 use super::ConfigExecutor;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Status {
     Preoperation,
     Intraoperation,
     Postoperation
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct Operation {
     id: i32,
     operation_name: String,
@@ -26,14 +26,14 @@ impl Default for Operation {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct OperationModel(Vec<Operation>);
 
 impl OperationModel {
     pub fn new(s: Vec<Operation>) -> Self {
         Self(s)
     } 
-    pub fn execute1(&mut self, config: super::Config) -> OperationModel {
+    pub fn execute_config(&mut self, config: super::Config) -> OperationModel {
         &self.execute(config);
         self.clone()
     }

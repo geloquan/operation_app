@@ -16,8 +16,16 @@ pub(crate) struct Server {
     server_receiver: Receiver<super::server::Get>,
     middleman_sender: Sender<middleman::Get>
 }
-struct ServerExchangeFormat {
-    
+enum Method {
+    Crate,
+    Read,
+    Update,
+    Delete
+}
+struct ServerExchangeFormat<'a> {
+    request: bool,
+    method: Method,
+    metadata: &'a str
 }
 impl Server {
     pub fn new(receiver: ewebsock::WsReceiver, sender: ewebsock::WsSender, server_receiver: Receiver<super::server::Get>, middleman_sender: Sender<middleman::Get>) -> Self {
@@ -45,13 +53,13 @@ impl Server {
                     
                 },
                 ewebsock::WsEvent::Message(message) => {
-
+                    
                 },
                 ewebsock::WsEvent::Error(error) => {
                     
                 },
                 ewebsock::WsEvent::Closed => {
-
+                    
                 },
             }
         }

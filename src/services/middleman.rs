@@ -1,7 +1,7 @@
 use egui::debug_text::print;
 use tokio::sync::mpsc::{Receiver, Sender};
 
-use crate::DataMessage;
+use crate::{models::Config, DataMessage};
 
 
 //enum Table {
@@ -45,8 +45,11 @@ impl Middleman {
         println!("middleman_thread");
         loop {
             while let Ok(msg) = self.receiver.try_recv() {
+                println!("middleman_thread got msg");
                 match msg {
                     Get::Operation => {
+                        let operation_model = crate::models::Model::get_operation(Config::default(), &self.data);
+                        println!("operation model: {:?}", operation_model);
                     },
                 }
             }

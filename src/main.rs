@@ -1,17 +1,12 @@
 
-use std::sync::Arc;
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
-use chrono::{DateTime, Datelike, NaiveDateTime, Timelike, Utc};
 use components::{login, operation};
 use eframe::{egui, App};
 use egui::{Color32, Id, Label, RichText, Sense};
 use egui_extras::{TableBuilder, Column};
-use ewebsock::{self, WsReceiver, WsSender};
-use futures::channel::mpsc;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use services::middleman;
-use tokio::sync::mpsc::Sender;
+use services::middleman::{self, Get};
 
 #[derive(Deserialize, Debug, Serialize)]
 struct SendMessage {
@@ -63,17 +58,10 @@ mod models;
 struct OperationApp {
     view: std::rc::Rc<std::cell::RefCell<views::View>>,
     login: components::login::Login,
-    middleman_sender: Sender<services::middleman::Get>, 
+    thread: Rc<RefCell<services::app::App>>,
 }
-// , data, middleman_sender
 impl OperationApp {
-    pub fn new(cc: &eframe::CreationContext<'_>, middleman_sender: Sender<services::middleman::Get>) -> OperationApp {
-        //let request_json = serde_json::to_string(&SendMessage {
-        //    level: "operation".to_string(),
-        //    method: "initial".to_string(),
-        //    data: Some(json!({"content": "Hello from button('Send Message')!"})),
-        //}).unwrap();
-        //sender.send(ewebsock::WsMessage::Text(request_json));
+    pub fn new(cc: &eframe::CreationContext<'_>, thread: Rc<RefCell<services::app::App>>) -> OperationApp {
 
         let view =  std::rc::Rc::new(std::cell::RefCell::new(views::View::default()));
         let login = components::login::Login::new(std::rc::Rc::clone(&view));
@@ -81,7 +69,7 @@ impl OperationApp {
         OperationApp {
             view,
             login,
-            middleman_sender
+            thread
         }
     }
 }
@@ -92,7 +80,7 @@ impl App for OperationApp {
         match view {
             views::View::Login => {
                 egui::CentralPanel::default().show(ctx, |ui| {
-                    self.login.show(ctx);
+                    self.login.show(ctx, &mut self.thread);
                 });
             },
             views::View::OperationSelect => {
@@ -136,28 +124,6 @@ impl App for OperationApp {
         }
     }
 }
-//#[derive(Debug)]
-//pub struct CodeExample {
-//    name: String,
-//    age: u32,
-//}
-//impl Demo for CodeExample {
-//    fn name(&self) -> &'static str {
-//        "🖮 Code Example"
-//    }
-//
-//    fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
-//        use crate::View;
-//        egui::Window::new(self.name())
-//            .open(open)
-//            .min_width(375.0)
-//            .default_size([390.0, 500.0])
-//            .scroll(false)
-//            .resizable([true, false]) // resizable so we can shrink if the text edit grows
-//            .show(ctx, |ui| self.ui(ui));
-//    }
-//}
-
 #[derive(Debug)]
 struct DataMessage {
     message: String
@@ -175,7 +141,7 @@ async fn main() {
             )
         );
     
-    let service = services::Service::init(stream_database).await.unwrap();
+    let mut service = services::Service::init(stream_database).await.unwrap();
     let _ = eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
         let app = OperationApp::new(cc, service);
         Ok(Box::new(app))

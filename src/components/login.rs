@@ -1,6 +1,6 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, thread};
 
-use crate::views;
+use crate::{models, services::app::App, views};
 
 use super::View;
 
@@ -29,12 +29,12 @@ impl Login {
     pub fn get_view(&self) -> views::View {
         *self.views.borrow()
     }
-    pub fn show(&mut self, ctx: &egui::Context) {
-        self.ui(ctx);
+    pub fn show(&mut self, ctx: &egui::Context, thread: &mut Rc<RefCell<App>>) {
+        self.ui(ctx, thread);
     }
 }
 impl super::View for Login {
-    fn ui(&mut self, ctx: &egui::Context) {
+    fn ui(&mut self, ctx: &egui::Context, thread: &mut Rc<RefCell<App>>) {
         let width = 500.0;
         let height = 250.0;
         
@@ -84,9 +84,8 @@ impl super::View for Login {
             });
             
             if ui.button("login").clicked() {
-                println!("hello");
-                let mut views = self.views.borrow_mut();
-                *views = views::View::OperationSelect;
+                println!("login clicked!");
+                thread.borrow().send(crate::services::middleman::Get::Operation);
             }
         });
     }
