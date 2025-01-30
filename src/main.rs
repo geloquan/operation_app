@@ -1,51 +1,10 @@
 
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc, sync::{Arc, RwLock}};
 
-use components::{login, operation};
 use eframe::{egui, App};
-use egui::{Color32, Id, Label, RichText, Sense};
-use egui_extras::{TableBuilder, Column};
-use serde::{Deserialize, Serialize};
-use services::middleman::{self, Get};
-
-#[derive(Deserialize, Debug, Serialize)]
-struct SendMessage {
-    level: String,
-    method: String,
-    data: Option<serde_json::Value>,
-}
-#[derive(Deserialize, Debug, Serialize)]
-#[serde(rename_all = "lowercase")]
-enum DatabaseTable {
-    All,
-    Equipment,
-    Room,
-    Tool,
-    Staff,
-    ToolReservation,
-    ToolDesignatedRoom,
-    ToolInspector,
-    Patient,
-    Operation,
-    PatientWardRoom,
-    PatientWardAssistant,
-    OperationStaff,
-    OperationTool
-}
-#[derive(Deserialize, Debug, Serialize)]
-#[serde(rename_all = "lowercase")]
-enum Operation {
-    Initialize,
-    Update
-}
-#[derive(Deserialize, Debug, Serialize)]
-struct ReceiveMessage {
-    table_name: DatabaseTable,
-    operation: Operation,
-    status_code: String,
-    data: String,
-}
-
+use egui::Id;
+use models::{operation::OperationModel, StreamDatabase};
+use widget::Widget;
 
 mod services;
 
@@ -55,32 +14,35 @@ mod views;
 
 mod models;
 
+mod widget;
+
 struct OperationApp {
-    view: std::rc::Rc<std::cell::RefCell<views::View>>,
-    login: components::login::Login,
+    view: Rc<RefCell<views::View>>,
     thread: Rc<RefCell<services::app::App>>,
+    widget: Widget
 }
 impl OperationApp {
     pub fn new(cc: &eframe::CreationContext<'_>, thread: Rc<RefCell<services::app::App>>) -> OperationApp {
 
-        let view =  std::rc::Rc::new(std::cell::RefCell::new(views::View::default()));
-        let login = components::login::Login::new(std::rc::Rc::clone(&view));
-
+        let view =  Rc::new(RefCell::new(views::View::default()));
+        let widget = Widget::default();
+        
         OperationApp {
             view,
-            login,
-            thread
+            thread,
+            widget
         }
     }
 }
 
 impl App for OperationApp {
+    
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let view: views::View = self.login.get_view();
+        let view: views::View = self.view.borrow().clone();
         match view {
             views::View::Login => {
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    self.login.show(ctx, &mut self.thread);
+                egui::CentralPanel::default().show(ctx, |_ui| {
+                    views::login::Login::show(ctx, &mut self.widget.login);
                 });
             },
             views::View::OperationSelect => {
@@ -123,26 +85,47 @@ impl App for OperationApp {
             },
         }
     }
+    
+    fn save(&mut self, _storage: &mut dyn eframe::Storage) {}
+    
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        println!("exit!");
+    }
+    
+    fn auto_save_interval(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(30)
+    }
+    
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        // NOTE: a bright gray makes the shadows of the windows look weird.
+        // We use a bit of transparency so that if the user switches on the
+        // `transparent()` option they get immediate results.
+        egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).to_normalized_gamma_f32()
+    
+        // _visuals.window_fill() would also be a natural choice
+    }
+    
+    fn persist_egui_memory(&self) -> bool {
+        true
+    }
+    
+    fn raw_input_hook(&mut self, _ctx: &egui::Context, _raw_input: &mut egui::RawInput) {}
 }
-#[derive(Debug)]
-struct DataMessage {
-    message: String
-}
+
 #[tokio::main]
 async fn main() {
     let native_options = eframe::NativeOptions::default();
 
-    let stream_database: Arc<std::sync::RwLock<models::StreamDatabase>> = std::sync::Arc::new(
-        std::sync::RwLock::new(
-            models::StreamDatabase::init(
-                models::operation::OperationModel::new(
-                    vec![models::operation::Operation::default()]
-                ))
+    let stream_database: Arc<RwLock<models::StreamDatabase>> = Arc::new(
+        RwLock::new(
+            StreamDatabase::init(
+                OperationModel::new(None))
             )
         );
     
-    let mut service = services::Service::init(stream_database).await.unwrap();
-    let _ = eframe::run_native("OPERATION APP", native_options, Box::new(|cc| {
+    let service = services::Service::init(stream_database).await.unwrap();
+
+    let _ = eframe::run_native("Operation", native_options, Box::new(|cc| {
         let app = OperationApp::new(cc, service);
         Ok(Box::new(app))
     }));

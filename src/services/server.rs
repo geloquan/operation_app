@@ -2,8 +2,6 @@ use eframe::glow::MAX_SHADER_STORAGE_BLOCK_SIZE;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio_tungstenite::tungstenite::protocol::frame::coding::Data;
 
-use crate::DataMessage;
-
 use super::middleman;
 
 pub(crate) enum Get {
@@ -38,7 +36,7 @@ impl Server {
     }
     
     pub async fn serve(&mut self) {
-        println!("server_thread");
+        println!("Server serving...");
         loop {
             self.cloud_socket();
             self.server_socket();
@@ -47,10 +45,9 @@ impl Server {
 
     fn cloud_socket(&mut self) {
         while let Some(msg) = self.receiver.try_recv() {
-            println!("server_receiver got: {:?}", msg);
             match msg {
                 ewebsock::WsEvent::Opened => {
-                    
+                    println!("Connected to Server");
                 },
                 ewebsock::WsEvent::Message(message) => {
                     
@@ -59,7 +56,7 @@ impl Server {
                     
                 },
                 ewebsock::WsEvent::Closed => {
-                    
+                    println!("Disconnect to Server");
                 },
             }
         }

@@ -1,27 +1,11 @@
 
-enum State {
-    Waiting,
-    Error,
-    Valid,
-    Default
-}
-pub(crate) struct Login {
-    state: State,
-    email: String,
-    password: String,
-}
+use crate::widget::login as WidgetLogin;
+use crate::components::login as ComponentLogin;
 
-impl Default for Login {
-    fn default() -> Self {
-        Self {
-            state: State::Default,
-            email: "".to_string(),
-            password: "".to_string(),
-        }
-    }
-}
+pub(crate) struct Login;
+
 impl Login {
-    pub fn show(&mut self, ctx: &egui::Context) {
+    pub fn show(ctx: &egui::Context, widget_state: &mut WidgetLogin::Login) {
         let width = 500.0;
         let height = 250.0;
     
@@ -32,7 +16,7 @@ impl Login {
         .fixed_size([width, height])
         .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
         .show(ctx, |ui| {
-    
+            ComponentLogin::Login::ui(ui, widget_state);
         });
     }    
 }

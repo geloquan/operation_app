@@ -12,10 +12,6 @@ enum Components {
 
 }
 
-trait View {
-    fn ui(&mut self, ctx: &egui::Context, thread: &mut Rc<RefCell<App>>);
-}
-
 struct WindowConfig {
 
 }

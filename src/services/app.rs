@@ -34,7 +34,7 @@ impl App {
         }
     }
     pub fn send(&self, middleman_sender: super::middleman::Get) {
-        let clonee: Sender<crate::Get> = self.middleman_sender.clone();
+        let clonee: Sender<middleman::Get> = self.middleman_sender.clone();
         tokio::spawn(async move {
             let _ = clonee.send(middleman_sender).await;
         });

@@ -1,7 +1,7 @@
 use egui::debug_text::print;
 use tokio::sync::mpsc::{Receiver, Sender};
 
-use crate::{models::Config, DataMessage};
+use crate::{models::Config};
 
 
 //enum Table {
@@ -42,7 +42,7 @@ impl Middleman {
         }
     }
     pub async fn serve(&mut self) {
-        println!("middleman_thread");
+        println!("Middleman serving...");
         loop {
             while let Ok(msg) = self.receiver.try_recv() {
                 println!("middleman_thread got msg");

@@ -1,4 +1,4 @@
-mod login;
+pub mod login;
 
 #[derive(Clone, Copy)]
 pub(crate) enum State {
