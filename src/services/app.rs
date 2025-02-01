@@ -1,42 +1,42 @@
 use tokio::sync::mpsc::{Receiver, Sender};
 use std::{cell::RefCell, rc::Rc, sync::{Arc, RwLock}};
 
-use super::middleman;
+use crate::views::View;
 
-pub(crate) enum Get {
-    Operation
-}
+use super::{middleman, MiddlemanToUi, UiToMiddleman};
+
 pub(crate) struct App {
-    receiver: Receiver<Get>, 
-    middleman_sender: Sender<super::middleman::Get>, 
+    ui_receiver_middleman: Receiver<MiddlemanToUi>, 
+    ui_sender_middleman: Sender<UiToMiddleman>, 
     data: Arc<RwLock<crate::models::StreamDatabase>>,
 }
 impl App {
     pub fn new(
-        receiver: Receiver<Get>, 
-        middleman_sender: Sender<super::middleman::Get>, 
+        ui_receiver_middleman: Receiver<MiddlemanToUi>, 
+        ui_sender_middleman: Sender<UiToMiddleman>, 
         data: Arc<RwLock<crate::models::StreamDatabase>>,
     ) -> Self {
         Self {
-            receiver,
-            middleman_sender,
+            ui_receiver_middleman,
+            ui_sender_middleman,
             data
         }
     }
     pub async fn serve(&mut self) {
         loop {
-            while let Ok(msg) = self.receiver.try_recv() {
+            while let Ok(msg) = self.ui_receiver_middleman.try_recv() {
                 match msg {
-                    Get::Operation => {
-                    },
                 }
             }
         }
     }
-    pub fn send(&self, middleman_sender: super::middleman::Get) {
-        let clonee: Sender<middleman::Get> = self.middleman_sender.clone();
+    pub fn send(&self, msg: UiToMiddleman) {
+        let middleman_sender: Sender<UiToMiddleman> = self.ui_sender_middleman.clone();
         tokio::spawn(async move {
-            let _ = clonee.send(middleman_sender).await;
+            let _ = middleman_sender.send(msg).await;
         });
+    }
+    pub fn get_app_state(&self) -> View {
+        self.data.read().unwrap().get_app_state()
     }
 }

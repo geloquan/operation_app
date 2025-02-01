@@ -10,6 +10,7 @@ pub(crate) mod login {
 
     use crate::views;
 
+    #[derive(Clone)]
     pub(crate) enum State {
         Waiting,
         Error,
@@ -22,10 +23,16 @@ pub(crate) mod login {
         }
     }
 
-    #[derive(Default)]
+    #[derive(Default, Clone)]
     pub(crate) struct Login {
         pub state: State,
         pub email: String,
         pub password: String,
+    }
+
+    impl Login {
+        pub fn process() {
+            
+        }
     }
 }

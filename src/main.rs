@@ -4,7 +4,7 @@ use std::{cell::RefCell, rc::Rc, sync::{Arc, RwLock}, time::Duration};
 use eframe::{egui, App};
 use egui::Id;
 use models::{operation::OperationModel, StreamDatabase};
-use services::Service;
+use services::{middleman, Service};
 use tokio::time::sleep;
 use widget::Widget;
 
@@ -17,6 +17,8 @@ mod views;
 mod models;
 
 mod widget;
+
+use views::login::Login as LoginView;
 
 struct OperationApp {
     view: Rc<RefCell<views::View>>,
@@ -41,11 +43,11 @@ impl OperationApp {
 impl App for OperationApp {
     
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let view: views::View = self.view.borrow().clone();
+        let view: views::View = self.service.app.borrow().get_app_state();
         match view {
             views::View::Login => {
                 egui::CentralPanel::default().show(ctx, |_ui| {
-                    views::login::Login::show(ctx, &mut self.widget.login);
+                    LoginView::show(ctx, &mut self.widget.login, self.service.app.clone());
                 });
             },
             views::View::OperationSelect => {
@@ -133,16 +135,6 @@ async fn main() {
         let app = OperationApp::new(cc,  service);
         Ok(Box::new(app))
     }));
-
-    //service.middleman.borrow_mut().abort();
-    //service.server.borrow_mut().abort();
-    //
-    //// Wait for cancellation to complete
-    //sleep(Duration::from_secs_f32(1.0)).await;
-//
-    //let middleman = service.middleman.borrow_mut().is_finished();
-    //let server = service.server.borrow_mut().is_finished();
     
     println!("last exit");
-
 }

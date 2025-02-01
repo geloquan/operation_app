@@ -1,65 +1,77 @@
 use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
 
 use egui::debug_text::print;
+use sha2::digest::consts::False;
 use tokio::sync::mpsc::{Receiver, Sender};
 
-use crate::{models::Config};
+use crate::{models::Config, views::View, widget::login::{self, Login}};
 
+use super::{server, MiddlemanToServer, MiddlemanToUi, Node, ServerToMiddleman, UiToMiddleman};
 
-//enum Table {
-    //    FruitQueried
-    //}
-    //enum Get {
-        //    Table
-        //}
-        //enum Crate {
-            //    Table
-            //}
-            //enum Delete {
-                //    Table
-                //}
 pub(crate) struct Middleman {
-    receiver: Receiver<Get>, 
-    ui_sender: Sender<super::app::Get>, 
-    server_sender: Sender<super::server::Get>, 
+    middleman_receiver_ui: Receiver<UiToMiddleman>,
+    middleman_receiver_server: Receiver<ServerToMiddleman>,
+    middleman_sender_ui: Sender<MiddlemanToUi>,
+    middleman_sender_server: Sender<MiddlemanToServer>,
     data: std::sync::Arc<std::sync::RwLock<crate::models::StreamDatabase>>,
     stop_flag: Arc<AtomicBool>, 
 }
 
-pub(crate) enum Get {
-    Operation
-}
-
 impl Middleman {
     pub fn new(
-        receiver: Receiver<Get>, 
-        ui_sender: Sender<super::app::Get>, 
-        server_sender: Sender<super::server::Get>, 
+        middleman_receiver_ui: Receiver<UiToMiddleman>,
+        middleman_receiver_server: Receiver<ServerToMiddleman>,
+        middleman_sender_ui: Sender<MiddlemanToUi>,
+        middleman_sender_server: Sender<MiddlemanToServer>,
         data: std::sync::Arc<std::sync::RwLock<crate::models::StreamDatabase>>,
-        stop_flag: Arc<AtomicBool>, 
+        stop_flag: Arc<AtomicBool>,
     ) -> Self {
         Self {
-            receiver,
-            ui_sender,
-            server_sender,
+            middleman_receiver_ui,
+            middleman_receiver_server,
+            middleman_sender_ui,
+            middleman_sender_server,
             data,
-            stop_flag 
+            stop_flag,
         }
     }
     pub async fn serve(&mut self) {
         println!("Middleman serving...");
-        
+
         while !self.stop_flag.load(Ordering::Relaxed) {
-            while let Ok(msg) = self.receiver.try_recv() {
-                println!("middleman_thread got msg");
-                match msg {
-                    Get::Operation => {
-                        let operation_model = crate::models::Model::get_operation(Config::default(), &self.data);
-                        println!("operation model: {:?}", operation_model);
-                    },
-                }
-            }
+            self.app_socket().await;
+            self.server_socket().await;
             tokio::task::yield_now().await; // Allow other tasks to run
         }
+    }
+    async fn app_socket(&mut self) {
+        while let Ok(msg) = self.middleman_receiver_ui.try_recv() {
+            println!("middleman_thread got msg");
+            match msg {
+                UiToMiddleman::LoginAuthentication(login) => {
+                    let _ = self.middleman_sender_server.send(MiddlemanToServer::LoginAuthentication(login)).await;
+                },
+            }
+        }
+    }
+    async fn server_socket(&mut self) {
+        while let Ok(msg) = &self.middleman_receiver_server.try_recv() {
+            println!("middleman_thread got msg");
+            match msg {
+                ServerToMiddleman::LoginAuthentication(_) => {
+                    let mut data = self.data.write().unwrap();
+                    data.new_app_state(View::OperationSelect);
+                },
+            }
+        }
+    }
+    pub fn app_state(&self) -> View {
+        self.data.read().unwrap().get_app_state()
+    }
+    fn pre_login(&mut self, login: Login) {
+
+    }
+    fn post_login(&mut self, success: bool) {
+        
     }
 }

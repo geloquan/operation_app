@@ -2,6 +2,8 @@ use std::sync::{Arc, RwLock};
 
 use operation::OperationModel;
 
+use crate::views::{State, View};
+
 pub(crate) trait ConfigExecutor {
     fn execute(&mut self, config: Config);
 }
@@ -40,12 +42,6 @@ enum Table {
 pub(crate) struct Model;
 
 impl Model {
-    //pub fn get<T> (&self, table: Table, stream: Arc<std::sync::RwLock<StreamDatabase>>) -> Result<TableReturn, error::Error> {
-    //    match table {
-    //        Table::Operation(config) => Ok(TableReturn::Operation(self.operation(config, stream))),
-    //        Table::Tool(config) => Ok(TableReturn::Tools(self.tool(config, stream))),
-    //    }
-    //}
 
     pub fn get_operation(config: Config, stream: &Arc<std::sync::RwLock<StreamDatabase>>) -> operation::OperationModel {
         let binding = stream.write().unwrap();
@@ -68,18 +64,28 @@ mod error {
 
 enum TableReturn {
     Operation(operation::OperationModel),
-    Tools(tool::ToolModel)
+    Tools(tool::ToolModel),
+
 }
 pub(crate) struct StreamDatabase {
     operation: Arc<RwLock<operation::OperationModel>>,
+    app_state: Arc<RwLock<View>>
 }
 impl StreamDatabase {
     pub fn init(operation: operation::OperationModel) -> Self {
         Self {
-            operation: Arc::new(RwLock::new(operation))
+            operation: Arc::new(RwLock::new(operation)),
+            app_state: Arc::new(RwLock::new(View::default())),
         }
     }
     pub fn get_operation(&self) -> operation::OperationModel {
         self.operation.read().unwrap().clone()
+    }
+    pub fn get_app_state(&self) -> View {
+        self.app_state.read().unwrap().clone()
+    }
+    pub fn new_app_state(&mut self, state: View) {
+        let mut app = self.app_state.write().unwrap();
+        *app = state;
     }
 }

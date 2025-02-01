@@ -2,17 +2,14 @@ use std::{cell::RefCell, rc::Rc, thread};
 
 use egui::Ui;
 
-use crate::{services::app::App, views, widget::login::{self, State}};
+use crate::{services::{app::{self, App}, middleman}, views, widget::login::{self, State}};
 
 use crate::widget::login as WidgetLogin;
 
 pub(crate) struct Login;
 
 impl Login {
-    //pub fn show(&mut self, ctx: &egui::Context, thread: &mut Rc<RefCell<App>>) {
-    //    self.ui(ctx, thread);
-    //}
-    pub fn ui(ui: &mut Ui, widget_login: &mut WidgetLogin::Login) {
+    pub fn ui(ui: &mut Ui, widget_login: &mut WidgetLogin::Login, app: Rc<RefCell<app::App>>) {
         let mut visuals = ui.visuals().clone();
         visuals.widgets.hovered.bg_fill = egui::Color32::from_rgb(200, 100, 100); 
         
@@ -53,23 +50,8 @@ impl Login {
         
         if ui.button("login").clicked() {
             println!("login clicked!");
+            app.borrow().send(crate::services::UiToMiddleman::LoginAuthentication(widget_login.clone()));
             //thread.borrow().send(crate::services::middleman::Get::Operation);
         }
     }
 }
-//impl super::View for Login {
-//    fn ui(&mut self, ctx: &egui::Context, thread: &mut Rc<RefCell<App>>) {
-//        let width = 500.0;
-//        let height = 250.0;
-//        
-//        egui::Window::new("STAFF LOGIN")
-//        .default_open(true)
-//        .resizable(true)
-//        .collapsible(false)
-//        .fixed_size([width, height])
-//        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-//        .show(ctx, |ui| {
-//
-//        });
-//    }
-//}
