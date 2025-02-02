@@ -1,8 +1,6 @@
 
-use std::{cell::RefCell, rc::Rc, sync::{atomic::AtomicBool, Arc, RwLock}, thread, time::Duration};
+use std::{cell::RefCell, rc::Rc, sync::{atomic::AtomicBool, Arc, RwLock}};
 
-use egui::debug_text::print;
-use ewebsock::WsMessage;
 use tokio::{sync::mpsc::{self, Receiver, Sender}, task::JoinHandle};
 
 use crate::{widget::login, StreamDatabase};
@@ -10,18 +8,6 @@ use crate::{widget::login, StreamDatabase};
 mod server;
 pub(crate) mod app;
 pub mod middleman;
-
-pub(crate) enum Node {
-    Server,
-    App,
-    Middleman
-}
-
-
-trait Init {
-    fn init(message: std::sync::Arc<std::sync::RwLock<super::models::StreamDatabase>>) -> Result<Self, &'static str> where Self: Sized;
-}
-
 
 pub(crate) struct Service {
     pub server: Rc<RefCell<JoinHandle<()>>>,

@@ -4,12 +4,9 @@ use eframe::glow::MAX_SHADER_STORAGE_BLOCK_SIZE;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio_tungstenite::tungstenite::protocol::frame::coding::Data;
 
-use super::{middleman, MiddlemanToServer, ServerToMiddleman};
+use crate::widget::login::Login;
 
-pub(crate) enum Get {
-    Operation,
-    LoginAuthentication
-}
+use super::{middleman, MiddlemanToServer, ServerToMiddleman};
 
 pub(crate) struct Server {
     receiver: ewebsock::WsReceiver,
@@ -19,14 +16,16 @@ pub(crate) struct Server {
     stop_flag: Arc<AtomicBool>, 
 }
 enum Method {
-    Crate,
-    Read,
-    Update,
-    Delete
+    CheckUser(Login),
+}
+struct CheckUserReturn {
+    valid: bool,
+    full_name: String,
+    session_token: String
 }
 struct ServerExchangeFormat<'a> {
     request: bool,
-    method: Method,
+    method: Option<Method>,
     metadata: &'a str
 }
 impl Server {
@@ -79,6 +78,8 @@ impl Server {
             println!("server_socket received a message...");
             match msg {
                 MiddlemanToServer::LoginAuthentication(login) => {
+
+                    self.sender.send(ewebsock::WsMessage::Text(()));
                     let _ = self.server_sender_middleman.send(ServerToMiddleman::LoginAuthentication(true)).await;
                 },
             }

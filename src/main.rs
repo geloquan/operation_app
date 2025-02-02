@@ -1,11 +1,10 @@
 
-use std::{cell::RefCell, rc::Rc, sync::{Arc, RwLock}, time::Duration};
+use std::{cell::RefCell, rc::Rc, sync::{Arc, RwLock}};
 
 use eframe::{egui, App};
 use egui::Id;
 use models::{operation::OperationModel, StreamDatabase};
-use services::{middleman, Service};
-use tokio::time::sleep;
+use services::Service;
 use widget::Widget;
 
 mod services;
@@ -18,7 +17,10 @@ mod models;
 
 mod widget;
 
-use views::login::Login as LoginView;
+use views::{
+    login::Login as LoginView,
+    operation_select::OperationSelect as OperationSelectView
+};
 
 struct OperationApp {
     view: Rc<RefCell<views::View>>,
@@ -52,7 +54,7 @@ impl App for OperationApp {
             },
             views::View::OperationSelect => {
                 egui::CentralPanel::default().show(ctx, |ui| {
-                    //let mut login_form = components::operation::select::LoginForm::LoginForm::new(components::operation::select::LoginForm::State::Default, "email".to_string(), "password".to_string());
+                    OperationSelectView::show(ctx);
                 });
             },
             views::View::Operation(state) => {

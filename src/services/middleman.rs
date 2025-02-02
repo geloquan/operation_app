@@ -1,12 +1,10 @@
 use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
 
-use egui::debug_text::print;
-use sha2::digest::consts::False;
 use tokio::sync::mpsc::{Receiver, Sender};
 
-use crate::{models::Config, views::View, widget::login::{self, Login}};
+use crate::{views::View, widget::login::Login};
 
-use super::{server, MiddlemanToServer, MiddlemanToUi, Node, ServerToMiddleman, UiToMiddleman};
+use super::{MiddlemanToServer, MiddlemanToUi, ServerToMiddleman, UiToMiddleman};
 
 pub(crate) struct Middleman {
     middleman_receiver_ui: Receiver<UiToMiddleman>,
@@ -74,4 +72,5 @@ impl Middleman {
     fn post_login(&mut self, success: bool) {
         
     }
+    fn new_session(&mut self, )
 }
