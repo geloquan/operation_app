@@ -1,10 +1,11 @@
 use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
 
 use eframe::glow::MAX_SHADER_STORAGE_BLOCK_SIZE;
+use serde::Serialize;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio_tungstenite::tungstenite::protocol::frame::coding::Data;
 
-use crate::widget::login::Login;
+use crate::{models::exchange_format::{self, Method, ServerExchangeFormat, SessionToken}, widget::login::Login};
 
 use super::{middleman, MiddlemanToServer, ServerToMiddleman};
 
@@ -14,19 +15,6 @@ pub(crate) struct Server {
     server_receiver_middleman: Receiver<MiddlemanToServer>,
     server_sender_middleman: Sender<ServerToMiddleman>,
     stop_flag: Arc<AtomicBool>, 
-}
-enum Method {
-    CheckUser(Login),
-}
-struct CheckUserReturn {
-    valid: bool,
-    full_name: String,
-    session_token: String
-}
-struct ServerExchangeFormat<'a> {
-    request: bool,
-    method: Option<Method>,
-    metadata: &'a str
 }
 impl Server {
     pub fn new(
@@ -61,7 +49,26 @@ impl Server {
                     println!("Connected to Server");
                 },
                 ewebsock::WsEvent::Message(message) => {
-                    
+                    match message {
+                        ewebsock::WsMessage::Binary(items) => todo!(),
+                        ewebsock::WsMessage::Text(msg) => {
+                            let exchange_format = serde_json::from_str::<ServerExchangeFormat>(&msg).unwrap();
+                            println!("exchange_format: {:?}", exchange_format);
+                            match exchange_format.method {
+                                Method::CheckUser => {
+                                    let _ = self.server_sender_middleman.send(
+                                        ServerToMiddleman::LoginAuthentication(
+                                            Some(serde_json::from_str::<SessionToken>(
+                                                &exchange_format.metadata).unwrap()
+                                            ))
+                                        ).await;
+                                },
+                            }
+                        },
+                        ewebsock::WsMessage::Unknown(_) => todo!(),
+                        ewebsock::WsMessage::Ping(items) => todo!(),
+                        ewebsock::WsMessage::Pong(items) => todo!(),
+                    }
                 },
                 ewebsock::WsEvent::Error(error) => {
                     
@@ -78,9 +85,13 @@ impl Server {
             println!("server_socket received a message...");
             match msg {
                 MiddlemanToServer::LoginAuthentication(login) => {
+                    let exchange_format = ServerExchangeFormat {
+                        metadata: serde_json::to_string(&login).unwrap(),
+                        method: Method::CheckUser,
+                        request: true
+                    };
 
-                    self.sender.send(ewebsock::WsMessage::Text(()));
-                    let _ = self.server_sender_middleman.send(ServerToMiddleman::LoginAuthentication(true)).await;
+                    self.sender.send(ewebsock::WsMessage::Text(serde_json::to_string(&exchange_format).unwrap()));
                 },
             }
         }

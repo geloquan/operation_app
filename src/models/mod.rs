@@ -1,5 +1,6 @@
 use std::sync::{Arc, RwLock};
 
+use exchange_format::SessionToken;
 use operation::OperationModel;
 
 use crate::views::{State, View};
@@ -41,6 +42,8 @@ enum Table {
 
 pub(crate) struct Model;
 
+pub mod exchange_format;
+
 impl Model {
 
     pub fn get_operation(config: Config, stream: &Arc<std::sync::RwLock<StreamDatabase>>) -> operation::OperationModel {
@@ -69,13 +72,15 @@ enum TableReturn {
 }
 pub(crate) struct StreamDatabase {
     operation: Arc<RwLock<operation::OperationModel>>,
-    app_state: Arc<RwLock<View>>
+    app_state: Arc<RwLock<View>>,
+    session_token: Arc<RwLock<SessionToken>>
 }
 impl StreamDatabase {
     pub fn init(operation: operation::OperationModel) -> Self {
         Self {
             operation: Arc::new(RwLock::new(operation)),
             app_state: Arc::new(RwLock::new(View::default())),
+            session_token: Arc::new(RwLock::new(SessionToken(None)))
         }
     }
     pub fn get_operation(&self) -> operation::OperationModel {
@@ -87,5 +92,9 @@ impl StreamDatabase {
     pub fn new_app_state(&mut self, state: View) {
         let mut app = self.app_state.write().unwrap();
         *app = state;
+    }
+    pub fn new_session_token(&mut self, new_session_token: &SessionToken) {
+        let mut session_token_lock = self.session_token.write().unwrap();
+        *session_token_lock = new_session_token.clone();
     }
 }

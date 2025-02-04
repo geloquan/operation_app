@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc, sync::{atomic::AtomicBool, Arc, RwLock}};
 
 use tokio::{sync::mpsc::{self, Receiver, Sender}, task::JoinHandle};
 
-use crate::{widget::login, StreamDatabase};
+use crate::{models::exchange_format::SessionToken, widget::login, StreamDatabase};
 
 mod server;
 pub(crate) mod app;
@@ -24,7 +24,7 @@ pub(crate) enum UiToMiddleman {
     LoginAuthentication(login::Login)
 }
 pub(crate) enum ServerToMiddleman {
-    LoginAuthentication(bool)
+    LoginAuthentication(Option<SessionToken>)
 }
 
 
@@ -34,7 +34,7 @@ impl Service {
         let (ui_sender_middleman, middleman_receiver_ui): (Sender<UiToMiddleman>, Receiver<UiToMiddleman>) = mpsc::channel(32);
         let (server_sender_middleman, middleman_receiver_server): (Sender<ServerToMiddleman>, Receiver<ServerToMiddleman>) = mpsc::channel(32);
         let (middleman_sender_server, server_receiver_middleman): (Sender<MiddlemanToServer>, Receiver<MiddlemanToServer>) = mpsc::channel(32);
-        let (cloud_sender, cloud_receiver) = ewebsock::connect("ws://192.168.1.9:8080", ewebsock::Options::default()).unwrap();
+        let (cloud_sender, cloud_receiver) = ewebsock::connect("ws://192.168.1.6:8080", ewebsock::Options::default()).unwrap();
     
     
         let middleman_message = Arc::clone(&message);

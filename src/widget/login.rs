@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 
-
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub(crate) enum State {
     Waiting,
     Error,
@@ -13,7 +14,7 @@ impl Default for State {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Serialize)]
 pub(crate) struct Login {
     pub state: State,
     pub email: String,

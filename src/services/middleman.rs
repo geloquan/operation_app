@@ -56,9 +56,18 @@ impl Middleman {
         while let Ok(msg) = &self.middleman_receiver_server.try_recv() {
             println!("middleman_thread got msg");
             match msg {
-                ServerToMiddleman::LoginAuthentication(_) => {
-                    let mut data = self.data.write().unwrap();
-                    data.new_app_state(View::OperationSelect);
+                ServerToMiddleman::LoginAuthentication(session_token) => {
+                    match session_token {
+                        Some(session_token) => {
+                            let mut data = self.data.write().unwrap();
+                            println!("session_token {:?}", session_token);
+                            data.new_session_token(session_token);
+                            data.new_app_state(View::OperationSelect);
+                        },
+                        None => {
+                            
+                        },
+                    }
                 },
             }
         }
@@ -72,5 +81,5 @@ impl Middleman {
     fn post_login(&mut self, success: bool) {
         
     }
-    fn new_session(&mut self, )
+    //fn new_session(&mut self, )
 }
