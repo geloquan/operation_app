@@ -1,6 +1,7 @@
-use super::Operation;
+use crate::models::operation::Operation;
 
+#[derive(Default)]
 pub(crate) struct OperationSelect {
     pub search: String,
-    pub operation: Operation
+    pub operation: Option<Operation>
 }

@@ -17,7 +17,7 @@ pub(crate) struct Operation {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct OperationModel(Option<Vec<Operation>>);
+pub(crate) struct OperationModel(pub Option<Vec<Operation>>);
 
 impl OperationModel {
     pub fn new(s: Option<Vec<Operation>>) -> Self {

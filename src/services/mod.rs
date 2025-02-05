@@ -3,11 +3,13 @@ use std::{cell::RefCell, rc::Rc, sync::{atomic::AtomicBool, Arc, RwLock}};
 
 use tokio::{sync::mpsc::{self, Receiver, Sender}, task::JoinHandle};
 
-use crate::{models::exchange_format::SessionToken, widget::login, StreamDatabase};
+use crate::{models::{error::Error, exchange_format::SessionToken, operation::Operation}, widget::login, StreamDatabase};
 
 mod server;
 pub(crate) mod app;
 pub mod middleman;
+
+
 
 pub(crate) struct Service {
     pub server: Rc<RefCell<JoinHandle<()>>>,
@@ -24,7 +26,9 @@ pub(crate) enum UiToMiddleman {
     LoginAuthentication(login::Login)
 }
 pub(crate) enum ServerToMiddleman {
-    LoginAuthentication(Option<SessionToken>)
+    LoginAuthentication(Result<SessionToken, Error>),
+    OperationList(Result<Vec<Operation>, Error>),
+    OperationData
 }
 
 

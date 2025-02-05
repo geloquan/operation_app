@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::error::Error;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Method {
     CheckUser,
@@ -17,4 +19,4 @@ pub struct ServerExchangeFormat {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub(crate) struct SessionToken(pub Option<String>);
+pub(crate) struct SessionToken(pub Result<String, Error>);

@@ -1,9 +1,11 @@
 use std::sync::{Arc, RwLock};
 
 use exchange_format::SessionToken;
-use operation::OperationModel;
+use operation::{Operation, OperationModel};
 
-use crate::views::{State, View};
+use crate::{views::{State, View}, widget::operation::operation_select::OperationSelect};
+
+pub mod error;
 
 pub(crate) trait ConfigExecutor {
     fn execute(&mut self, config: Config);
@@ -59,12 +61,6 @@ impl Model {
     }
 }
 
-mod error {
-    pub(crate) enum Error {
-        NotRowFound,
-    }
-}
-
 enum TableReturn {
     Operation(operation::OperationModel),
     Tools(tool::ToolModel),
@@ -73,14 +69,14 @@ enum TableReturn {
 pub(crate) struct StreamDatabase {
     operation: Arc<RwLock<operation::OperationModel>>,
     app_state: Arc<RwLock<View>>,
-    session_token: Arc<RwLock<SessionToken>>
+    session_token: Arc<RwLock<Option<SessionToken>>>
 }
 impl StreamDatabase {
     pub fn init(operation: operation::OperationModel) -> Self {
         Self {
             operation: Arc::new(RwLock::new(operation)),
             app_state: Arc::new(RwLock::new(View::default())),
-            session_token: Arc::new(RwLock::new(SessionToken(None)))
+            session_token: Arc::new(RwLock::new(None))
         }
     }
     pub fn get_operation(&self) -> operation::OperationModel {
@@ -95,6 +91,10 @@ impl StreamDatabase {
     }
     pub fn new_session_token(&mut self, new_session_token: &SessionToken) {
         let mut session_token_lock = self.session_token.write().unwrap();
-        *session_token_lock = new_session_token.clone();
+        *session_token_lock = Some(new_session_token.clone());
+    }
+    pub fn new_operation_list(&mut self, operation_list: Vec<Operation>) {
+        let mut operation_list_lock = self.operation.write().unwrap();
+        *operation_list_lock = OperationModel(Some(operation_list));
     }
 }

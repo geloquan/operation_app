@@ -58,7 +58,7 @@ impl Server {
                                 Method::CheckUser => {
                                     let _ = self.server_sender_middleman.send(
                                         ServerToMiddleman::LoginAuthentication(
-                                            Some(serde_json::from_str::<SessionToken>(
+                                            Ok(serde_json::from_str::<SessionToken>(
                                                 &exchange_format.metadata).unwrap()
                                             ))
                                         ).await;

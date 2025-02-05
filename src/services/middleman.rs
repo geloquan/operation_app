@@ -54,20 +54,32 @@ impl Middleman {
     }
     async fn server_socket(&mut self) {
         while let Ok(msg) = &self.middleman_receiver_server.try_recv() {
-            println!("middleman_thread got msg");
             match msg {
                 ServerToMiddleman::LoginAuthentication(session_token) => {
                     match session_token {
-                        Some(session_token) => {
+                        Ok(session_token) => {
                             let mut data = self.data.write().unwrap();
-                            println!("session_token {:?}", session_token);
                             data.new_session_token(session_token);
                             data.new_app_state(View::OperationSelect);
                         },
-                        None => {
+                        Err(e) => {
                             
                         },
                     }
+                },
+                ServerToMiddleman::OperationList(operation_list) => {
+                    match operation_list {
+                        Ok(operation_list) => {
+                            let mut data = self.data.write().unwrap();
+                            data.new_operation_list(operation_list.clone());
+                        },
+                        Err(e) => {
+                            
+                        },
+                    }
+                },
+                ServerToMiddleman::OperationData => {
+                    
                 },
             }
         }

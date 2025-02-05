@@ -1,4 +1,5 @@
 
+#[derive(Default)]
 pub(crate) struct Patient {
     id: i32,
     name: String,

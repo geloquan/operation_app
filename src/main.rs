@@ -13,7 +13,7 @@ mod components;
 
 mod views;
 
-mod models;
+pub mod models;
 
 mod widget;
 
@@ -54,7 +54,7 @@ impl App for OperationApp {
             },
             views::View::OperationSelect => {
                 egui::CentralPanel::default().show(ctx, |ui| {
-                    OperationSelectView::show(ctx);
+                    OperationSelectView::show(ctx, &mut self.widget.operation_select, self.service.app.clone());
                 });
             },
             views::View::Operation(state) => {

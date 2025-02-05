@@ -1,9 +1,13 @@
+use std::{cell::RefCell, rc::Rc};
+
 use egui::Ui;
+
+use crate::{services::app::App, widget::operation::operation_select::OperationSelect as WidgetOperationSelect};
 
 pub(crate) struct OperationSelect;
 
 impl OperationSelect {
-    pub fn ui(ui: &mut Ui) {
+    pub fn ui(ui: &mut Ui, widget_state: &WidgetOperationSelect, app: Rc<RefCell<App>>) {
         ui.columns(1, |columns| {
             columns[0].vertical_centered(|ui| {
                 let tbl = egui_extras::TableBuilder::new(ui)
